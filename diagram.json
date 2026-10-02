@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "author": "Vu Thien Truong",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 60, "left": 0, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "pot1", "top": -80, "left": -100, "attrs": { "label": "DAT" } },
+    { "type": "wokwi-potentiometer", "id": "pot2", "top": -80, "left": -200, "attrs": { "label": "MUA-TEST" } },
+    { "type": "wokwi-pushbutton", "id": "rain_btn", "top": 100, "left": -150, "attrs": { "color": "blue", "label": "TROI MUA" } },
+    { "type": "wokwi-relay-module", "id": "relay1", "top": 180, "left": 130, "attrs": {} },
+    { "type": "wokwi-lcd1602", "id": "lcd1", "top": -120, "left": 80, "attrs": { "pins": "i2c" } },
+    { "type": "wokwi-led", "id": "pump_led", "top": 280, "left": 160, "attrs": { "color": "cyan", "label": "MAY BOM" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serial:rx", "", [] ],
+    [ "esp:RX", "$serial:tx", "", [] ],
+    [ "pot1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "pot1:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "pot1:SIG", "esp:34", "green", [ "v0" ] ],
+    [ "pot2:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "pot2:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "pot2:SIG", "esp:35", "green", [ "v0" ] ],
+    [ "rain_btn:1.l", "esp:27", "blue", [ "v0" ] ],
+    [ "rain_btn:2.l", "esp:GND.2", "black", [ "v0" ] ],
+    [ "relay1:GND", "esp:GND.2", "black", [ "v0" ] ],
+    [ "relay1:VCC", "esp:5V", "red", [ "v0" ] ],
+    [ "relay1:IN", "esp:26", "blue", [ "v0" ] ],
+    [ "pump_led:A", "esp:26", "blue", [ "v0" ] ],
+    [ "pump_led:C", "esp:GND.2", "black", [ "v0" ] ],
+    [ "lcd1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "lcd1:VCC", "esp:5V", "red", [ "v0" ] ],
+    [ "lcd1:SDA", "esp:21", "orange", [ "v0" ] ],
+    [ "lcd1:SCL", "esp:22", "yellow", [ "v0" ] ]
+  ]
+}
