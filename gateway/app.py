@@ -8,7 +8,9 @@ import os
 import secrets
 import sqlite3
 import threading
+import time
 import uuid
+from urllib.request import Request, urlopen
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
@@ -43,11 +45,22 @@ MQTT_CA_CERT = os.getenv("MQTT_CA_CERT", "")
 TELEMETRY_TOPIC = os.getenv("MQTT_TELEMETRY_TOPIC", "mixiplan/tuoicay_mx7k2/trangthai")
 COMMAND_TOPIC = os.getenv("MQTT_COMMAND_TOPIC", "mixiplan/tuoicay_mx7k2/bom/set")
 ACK_TOPIC = os.getenv("MQTT_ACK_TOPIC", "mixiplan/tuoicay_mx7k2/bom/ack")
+WEATHER_URL = (
+    "https://api.open-meteo.com/v1/forecast?latitude=10.8231&longitude=106.6297"
+    "&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m"
+    "&hourly=temperature_2m,precipitation_probability,precipitation,weather_code"
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum"
+    "&forecast_days=3&timezone=Asia%2FHo_Chi_Minh"
+)
+WEATHER_CACHE_SECONDS = 600
 
 db_lock = threading.Lock()
 mqtt_client: mqtt.Client | None = None
 broker_connected = threading.Event()
 bearer = HTTPBearer(auto_error=False)
+weather_cache: dict[str, Any] | None = None
+weather_cache_time = 0.0
+weather_lock = threading.Lock()
 
 
 def utc_now() -> str:
@@ -223,6 +236,72 @@ def dashboard() -> FileResponse:
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "mqtt_connected": broker_connected.is_set(), "database": str(DATABASE_PATH)}
+
+
+@app.get("/api/weather")
+def weather_forecast(_user: dict[str, str] = Depends(current_user)) -> dict[str, Any]:
+    global weather_cache, weather_cache_time
+    now = time.monotonic()
+    with weather_lock:
+        if weather_cache is not None and now - weather_cache_time < WEATHER_CACHE_SECONDS:
+            return weather_cache
+
+        request = Request(WEATHER_URL, headers={"User-Agent": "MixiPlan/1.0"})
+        try:
+            with urlopen(request, timeout=8) as response:
+                raw = json.loads(response.read().decode("utf-8"))
+
+            current = raw["current"]
+            hourly = raw["hourly"]
+            daily = raw["daily"]
+            current_time = current["time"]
+            future_hours = []
+            for i, timestamp in enumerate(hourly["time"]):
+                if timestamp <= current_time:
+                    continue
+                future_hours.append({
+                    "time": timestamp,
+                    "temperature": hourly["temperature_2m"][i],
+                    "rain_probability": hourly["precipitation_probability"][i],
+                    "precipitation": hourly["precipitation"][i],
+                    "weather_code": hourly["weather_code"][i],
+                })
+                if len(future_hours) == 8:
+                    break
+
+            forecast = {
+                "location": "TP. Hồ Chí Minh",
+                "timezone": raw.get("timezone", "Asia/Ho_Chi_Minh"),
+                "updated_at": utc_now(),
+                "current": {
+                    "time": current_time,
+                    "temperature": current["temperature_2m"],
+                    "feels_like": current["apparent_temperature"],
+                    "humidity": current["relative_humidity_2m"],
+                    "precipitation": current["precipitation"],
+                    "wind_speed": current["wind_speed_10m"],
+                    "weather_code": current["weather_code"],
+                },
+                "hourly": future_hours,
+                "daily": [
+                    {
+                        "date": daily["time"][i],
+                        "weather_code": daily["weather_code"][i],
+                        "temperature_max": daily["temperature_2m_max"][i],
+                        "temperature_min": daily["temperature_2m_min"][i],
+                        "rain_probability_max": daily["precipitation_probability_max"][i],
+                        "precipitation_sum": daily["precipitation_sum"][i],
+                    }
+                    for i in range(min(3, len(daily["time"])))
+                ],
+            }
+            weather_cache = forecast
+            weather_cache_time = time.monotonic()
+            return forecast
+        except Exception as exc:
+            if weather_cache is not None:
+                return {**weather_cache, "stale": True, "error": "Không tải được cập nhật mới"}
+            raise HTTPException(status_code=502, detail="Không lấy được dự báo Open-Meteo") from exc
 
 
 @app.post("/api/login")

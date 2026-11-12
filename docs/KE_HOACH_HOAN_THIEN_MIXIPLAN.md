@@ -42,7 +42,7 @@ Demo hiện tập trung vào độ ẩm đất và thời tiết đúng với lo
 
 ## 5. Gateway, webhook và dashboard local
 
-Thư mục `gateway/` chứa API FastAPI và trang web tĩnh. Gateway subscribe telemetry/ACK MQTT và ghi SQLite; endpoint `/api/webhooks/telemetry` nhận JSON khi có `X-Webhook-Token`; đăng nhập tạo JWT 8 giờ; viewer chỉ đọc, admin mới được gửi lệnh `ON/OFF/AUTO`. Lệnh được gắn ID, gateway lưu trạng thái queued và cập nhật khi nhận ACK từ ESP32. Dashboard vẽ lịch sử độ ẩm/mưa và hiển thị trạng thái MQTT/ACK.
+Thư mục `gateway/` chứa API FastAPI và trang web tĩnh. Gateway subscribe telemetry/ACK MQTT và ghi SQLite; endpoint `/api/webhooks/telemetry` nhận JSON khi có `X-Webhook-Token`; đăng nhập tạo JWT 8 giờ; viewer chỉ đọc, admin mới được gửi lệnh `ON/OFF/AUTO`. Lệnh được gắn ID, gateway lưu trạng thái queued và cập nhật khi nhận ACK từ ESP32. Dashboard vẽ lịch sử độ ẩm/mưa, hiển thị trạng thái MQTT/ACK và lấy thời tiết hiện tại, dự báo 8 giờ/3 ngày cho trung tâm TP.HCM qua Open‑Meteo; API thời tiết cache 10 phút.
 
 Từ terminal CMD ở thư mục gốc project, chạy `gateway\run.bat`; lần đầu script tự tạo môi trường Python và cài dependencies, các lần sau không cài lại. Mở `http://127.0.0.1:8000`. Gateway cần Internet để kết nối broker. Broker công cộng chỉ dùng demo; API local không được phơi ra Internet nếu chưa có HTTPS/reverse proxy.
 

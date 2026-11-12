@@ -70,6 +70,8 @@ http://127.0.0.1:8000
 
 Đăng nhập bằng `admin` hoặc `viewer`; mở `gateway/.env` để xem mật khẩu đã tạo. Admin được gửi lệnh, viewer chỉ xem. Khi Wokwi và gateway cùng kết nối được broker, dashboard sẽ nhận telemetry.
 
+Dashboard cũng tải dự báo Open‑Meteo cho khu vực trung tâm TP.HCM: thời tiết hiện tại, 8 giờ tiếp theo và 3 ngày tới. Gateway cần Internet; dữ liệu dự báo được cache 10 phút. Nếu Open‑Meteo tạm thời không truy cập được, dashboard báo lỗi hoặc dùng bản cache gần nhất.
+
 ## 6. Thứ tự chạy đầy đủ
 
 1. Build firmware lại trong VS Code sau thay đổi mới nhất.
