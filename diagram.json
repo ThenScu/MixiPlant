@@ -4,16 +4,19 @@
   "editor": "wokwi",
   "parts": [
     { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 60, "left": 0, "attrs": {} },
-    { "type": "wokwi-potentiometer", "id": "pot_soil", "top": -150, "left": -350, "attrs": { "label": "DO AM DAT" } },
-    { "type": "wokwi-potentiometer", "id": "pot_rain", "top": -150, "left": -230, "attrs": { "label": "MUA TEST" } },
-    { "type": "wokwi-potentiometer", "id": "pot_npk", "top": -150, "left": -110, "attrs": { "label": "NPK DEMO" } },
-    { "type": "wokwi-potentiometer", "id": "pot_ec", "top": -150, "left": 10, "attrs": { "label": "EC DEMO" } },
-    { "type": "wokwi-pushbutton", "id": "rain_btn", "top": 110, "left": -210, "attrs": { "color": "blue", "label": "TROI MUA" } },
+    { "type": "wokwi-text", "id": "soil_label", "top": -150, "left": -350, "attrs": { "text": "1. DO AM DAT" } },
+    { "type": "wokwi-text", "id": "rain_label", "top": -150, "left": -230, "attrs": { "text": "2. MUA" } },
+    { "type": "wokwi-potentiometer", "id": "pot_soil", "top": -65, "left": -350, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "pot_rain", "top": -65, "left": -230, "attrs": {} },
+    { "type": "wokwi-pushbutton", "id": "rain_btn", "top": 145, "left": -210, "attrs": { "color": "blue", "label": "NHAN = TROI MUA" } },
+    { "type": "wokwi-text", "id": "pump_relay_label", "top": 95, "left": 130, "attrs": { "text": "BOM RELAY" } },
+    { "type": "wokwi-text", "id": "valve_relay_label", "top": 95, "left": 280, "attrs": { "text": "VAN RELAY" } },
     { "type": "wokwi-relay-module", "id": "pump_relay", "top": 180, "left": 130, "attrs": {} },
     { "type": "wokwi-relay-module", "id": "valve_relay", "top": 180, "left": 280, "attrs": {} },
     { "type": "wokwi-lcd1602", "id": "lcd1", "top": -130, "left": 190, "attrs": { "pins": "i2c" } },
-    { "type": "wokwi-led", "id": "pump_led", "top": 300, "left": 150, "attrs": { "color": "cyan", "label": "BOM DEMO" } },
-    { "type": "wokwi-led", "id": "valve_led", "top": 300, "left": 300, "attrs": { "color": "blue", "label": "VAN 12V DEMO" } }
+    { "type": "wokwi-lcd1602", "id": "lcd2", "top": -30, "left": 190, "attrs": { "pins": "i2c", "i2cAddress": "0x26" } },
+    { "type": "wokwi-led", "id": "pump_led", "top": 300, "left": 150, "attrs": { "color": "cyan", "label": "DEN SANG = BOM BAT" } },
+    { "type": "wokwi-led", "id": "valve_led", "top": 300, "left": 300, "attrs": { "color": "blue", "label": "DEN SANG = VAN MO" } }
   ],
   "connections": [
     [ "esp:TX", "$serial:rx", "", [] ],
@@ -24,12 +27,6 @@
     [ "pot_rain:GND", "esp:GND.1", "black", [ "v0" ] ],
     [ "pot_rain:VCC", "esp:3V3", "red", [ "v0" ] ],
     [ "pot_rain:SIG", "esp:35", "green", [ "v0" ] ],
-    [ "pot_npk:GND", "esp:GND.1", "black", [ "v0" ] ],
-    [ "pot_npk:VCC", "esp:3V3", "red", [ "v0" ] ],
-    [ "pot_npk:SIG", "esp:32", "green", [ "v0" ] ],
-    [ "pot_ec:GND", "esp:GND.1", "black", [ "v0" ] ],
-    [ "pot_ec:VCC", "esp:3V3", "red", [ "v0" ] ],
-    [ "pot_ec:SIG", "esp:33", "green", [ "v0" ] ],
     [ "rain_btn:1.l", "esp:27", "blue", [ "v0" ] ],
     [ "rain_btn:2.l", "esp:GND.2", "black", [ "v0" ] ],
     [ "pump_relay:GND", "esp:GND.2", "black", [ "v0" ] ],
@@ -45,6 +42,10 @@
     [ "lcd1:GND", "esp:GND.1", "black", [ "v0" ] ],
     [ "lcd1:VCC", "esp:5V", "red", [ "v0" ] ],
     [ "lcd1:SDA", "esp:21", "orange", [ "v0" ] ],
-    [ "lcd1:SCL", "esp:22", "yellow", [ "v0" ] ]
+    [ "lcd1:SCL", "esp:22", "yellow", [ "v0" ] ],
+    [ "lcd2:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "lcd2:VCC", "esp:5V", "red", [ "v0" ] ],
+    [ "lcd2:SDA", "esp:21", "orange", [ "v0" ] ],
+    [ "lcd2:SCL", "esp:22", "yellow", [ "v0" ] ]
   ]
 }

@@ -1,15 +1,37 @@
 #include "NetworkService.h"
 
 #include <WiFi.h>
+#if MIXIPLAN_MQTT_TLS
+#include <WiFiClientSecure.h>
+#endif
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
+#include <string.h>
 
 #include "Config.h"
 
 namespace {
+#if MIXIPLAN_MQTT_TLS
+WiFiClientSecure wifiClient;
+#else
 WiFiClient wifiClient;
+#endif
 PubSubClient mqtt(wifiClient);
 AppState* appState = nullptr;
+
+void publishCommandAck(const String& commandId, const String& requestedState,
+                       bool accepted, const char* reason) {
+  if (!mqtt.connected()) return;
+  JsonDocument ack;
+  ack["id"] = commandId;
+  ack["device"] = "pump_and_valve";
+  ack["requested"] = requestedState;
+  ack["accepted"] = accepted;
+  ack["reason"] = reason;
+  String payload;
+  serializeJson(ack, payload);
+  mqtt.publish(TOPIC_ACK, payload.c_str());
+}
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   (void)topic;
@@ -18,21 +40,59 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String message;
   for (unsigned int i = 0; i < length; ++i) message += static_cast<char>(payload[i]);
   message.trim();
-  message.toUpperCase();
-  Serial.printf("[MQTT] Lenh nhan: %s\n", message.c_str());
+  String commandId;
+  String requestedState;
+  String target = "pump";
 
-  if (message == "ON") {
+  if (message.startsWith("{")) {
+    JsonDocument command;
+    if (deserializeJson(command, message)) {
+      publishCommandAck("", "", false, "INVALID_JSON");
+      return;
+    }
+    commandId = command["id"] | "";
+    target = command["device"] | "pump";
+    requestedState = command["state"] | "";
+  } else {
+    requestedState = message;
+  }
+  requestedState.trim();
+  requestedState.toUpperCase();
+  target.toLowerCase();
+
+  const bool knownTarget = target == "pump" || target == "pump_and_valve";
+  if (!knownTarget) {
+    if (appState) {
+      appState->lastCommandId = commandId;
+      appState->lastCommandResult = "REJECTED_TARGET";
+    }
+    publishCommandAck(commandId, requestedState, false, "UNKNOWN_DEVICE");
+    return;
+  }
+
+  bool accepted = true;
+  if (requestedState == "ON") {
     appState->pumpMode = "MANUAL_ON";
-  } else if (message == "OFF") {
+  } else if (requestedState == "OFF") {
     appState->pumpMode = "MANUAL_OFF";
-  } else if (message.startsWith("RAIN:")) {
-    const int value = constrain(message.substring(5).toInt(), 0, 100);
+  } else if (requestedState == "AUTO") {
+    appState->pumpMode = "AUTO";
+  } else if (requestedState.startsWith("RAIN:")) {
+    const int value = constrain(requestedState.substring(5).toInt(), 0, 100);
     appState->rainTestVal = value;
     appState->rainTestUntil = millis() + RAIN_TEST_TIMEOUT_MS;
     Serial.printf("[Test] Ep mua=%d%% trong 2 phut\n", value);
-  } else if (message == "AUTO") {
-    appState->pumpMode = "AUTO";
+  } else {
+    accepted = false;
   }
+
+  appState->lastCommandId = commandId;
+  appState->lastCommandResult = accepted ? "ACCEPTED" : "REJECTED_STATE";
+  Serial.printf("[MQTT] Lenh %s: %s\n", accepted ? "chap nhan" : "tu choi",
+                requestedState.c_str());
+  publishCommandAck(commandId, requestedState, accepted,
+                    accepted ? "QUEUED" : "UNKNOWN_STATE");
+  // Lenh sai khong thay doi che do dang chay.
 }
 }  // namespace
 
@@ -47,6 +107,18 @@ void beginNetworkService(AppState& state) {
   mqtt.setCallback(mqttCallback);
   mqtt.setKeepAlive(30);
   mqtt.setSocketTimeout(2);
+
+#if MIXIPLAN_MQTT_TLS
+  if (strlen(MQTT_CA_CERT) == 0) {
+    Serial.println("[MQTT] TLS duoc bat nhung chua co CA cert; MQTT se khong the ket noi");
+  } else {
+    wifiClient.setCACert(MQTT_CA_CERT);
+    if (strlen(MQTT_CLIENT_CERT) > 0 && strlen(MQTT_PRIVATE_KEY) > 0) {
+      wifiClient.setCertificate(MQTT_CLIENT_CERT);
+      wifiClient.setPrivateKey(MQTT_PRIVATE_KEY);
+    }
+  }
+#endif
 }
 
 void updateNetworkService(AppState& state, unsigned long now) {
@@ -60,7 +132,10 @@ void updateNetworkService(AppState& state, unsigned long now) {
       now - state.lastMqttAttempt >= state.mqttRetryDelay) {
     state.lastMqttAttempt = now;
     const String clientId = "ESP32-MixiPlan-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-    if (mqtt.connect(clientId.c_str())) {
+    const bool connected = strlen(MQTT_USERNAME) > 0
+        ? mqtt.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)
+        : mqtt.connect(clientId.c_str());
+    if (connected) {
       mqtt.subscribe(TOPIC_SUB);
       state.mqttRetryDelay = MQTT_RETRY_MIN_MS;
       Serial.println("[MQTT] Da ket noi va subscribe lenh");
@@ -72,6 +147,7 @@ void updateNetworkService(AppState& state, unsigned long now) {
   }
 
   mqtt.loop();
+  state.mqttOnline = mqtt.connected();
 }
 
 void publishTelemetry(const AppState& state, unsigned long now) {
@@ -80,10 +156,6 @@ void publishTelemetry(const AppState& state, unsigned long now) {
   JsonDocument doc;
   doc["am_goc"] = state.soilBase;
   doc["am_raw"] = state.soilRaw;
-  doc["npk_raw"] = state.npkRaw;
-  doc["npk_demo_mgkg"] = state.npkDemoMgKg;
-  doc["ec_raw"] = state.ecRaw;
-  doc["ec_demo_us_cm"] = state.ecDemoUsCm;
   doc["am"] = state.currentMoisture;
   doc["mua_api"] = state.rainApi;
   doc["mua_pot"] = state.rainPot;
@@ -93,6 +165,8 @@ void publishTelemetry(const AppState& state, unsigned long now) {
   doc["troi_mua"] = state.rainingNow;
   doc["bom"] = state.pumpActive ? "ON" : "OFF";
   doc["chedo"] = state.statusText;
+  doc["lenh_id"] = state.lastCommandId;
+  doc["lenh_ketqua"] = state.lastCommandResult;
   doc["wifi"] = WiFi.status() == WL_CONNECTED;
   doc["mqtt"] = mqtt.connected();
 

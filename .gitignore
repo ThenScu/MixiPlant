@@ -6,6 +6,12 @@
 
 # Build artifacts
 build/
+.venv/
+gateway/.venv/
+gateway/.env
+gateway/data/
+gateway/__pycache__/
+__pycache__/
 *.elf
 *.bin
 *.hex

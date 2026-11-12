@@ -22,12 +22,6 @@ void readSensors(AppState& state) {
   state.soilBase = soilPercentFromRaw(state.soilRaw);
 
   state.rainPot = constrain(map(readAveragedAdc(RAIN_AO_PIN), 0, 4095, 0, 100), 0, 100);
-  state.npkRaw = readAveragedAdc(NPK_PIN);
-  state.ecRaw = readAveragedAdc(EC_PIN);
-
-  // Gia tri demo tu potentiometer, khong phai so do NPK/EC tu cam bien that.
-  state.npkDemoMgKg = map(state.npkRaw, 0, 4095, 0, 2000);
-  state.ecDemoUsCm = map(state.ecRaw, 0, 4095, 0, 5000);
   state.rainingNow = digitalRead(RAIN_DO_PIN) == LOW;
 }
 

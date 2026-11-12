@@ -5,10 +5,6 @@
 struct AppState {
   int soilBase = 0;
   int soilRaw = 0;
-  int npkRaw = 0;
-  int ecRaw = 0;
-  int npkDemoMgKg = 0;
-  int ecDemoUsCm = 0;
   float irrigBoost = 0;
   int currentMoisture = 0;
 
@@ -19,12 +15,15 @@ struct AppState {
   float airTemp = 0;
   int airHum = 0;
   bool weatherValid = false;
+  bool mqttOnline = false;
   unsigned long lastWeatherSuccess = 0;
   unsigned long lastWeatherCheck = 0;
 
   bool pumpActive = false;
   String statusText = "KHOI DONG";
   String pumpMode = "AUTO";
+  String lastCommandId = "";
+  String lastCommandResult = "NONE";
   int rainTestVal = -1;
   unsigned long rainTestUntil = 0;
 

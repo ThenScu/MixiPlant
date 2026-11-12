@@ -6,6 +6,7 @@
 #include "Display.h"
 #include "IrrigationController.h"
 #include "NetworkService.h"
+#include "PowerManager.h"
 #include "Sensors.h"
 #include "WeatherService.h"
 
@@ -73,9 +74,14 @@ void loop() {
 
   readSensors(app);
   selectEffectiveRain(now);
-  updateWokwiSoilModel(now);
-  app.currentMoisture = constrain(
-      static_cast<int>(app.soilBase + app.irrigBoost), 0, 100);
+  if (SIMULATE_SOIL_RESPONSE) {
+    updateWokwiSoilModel(now);
+    app.currentMoisture = constrain(
+        static_cast<int>(app.soilBase + app.irrigBoost), 0, 100);
+  } else {
+    app.irrigBoost = 0;
+    app.currentMoisture = app.soilBase;
+  }
 
   updateIrrigationDecision(app, now);
   applyActuators();
@@ -85,4 +91,6 @@ void loop() {
     app.lastMqttPub = now;
     publishTelemetry(app, now);
   }
+
+  enterLowPowerSleepIfSafe(app);
 }
