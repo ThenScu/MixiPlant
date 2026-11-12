@@ -8,7 +8,7 @@ struct AppState {
   float irrigBoost = 0;
   int currentMoisture = 0;
 
-  int rainApi = 20;
+  int rainApi = -1;  // -1 = chua co forecast, khong gia lap xac suat mua
   int rainPot = 0;
   int rainEff = 20;
   bool rainingNow = false;

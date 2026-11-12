@@ -72,6 +72,8 @@ http://127.0.0.1:8000
 
 Dashboard cũng tải dự báo Open‑Meteo cho khu vực trung tâm TP.HCM: thời tiết hiện tại, 8 giờ tiếp theo và 3 ngày tới. Gateway cần Internet; dữ liệu dự báo được cache 10 phút. Nếu Open‑Meteo tạm thời không truy cập được, dashboard báo lỗi hoặc dùng bản cache gần nhất.
 
+**Dữ liệu cảm biến trong Wokwi là mô phỏng.** Núm độ ẩm/mưa là đầu vào giả lập; đổi vị trí núm để thấy số cập nhật trên dashboard. Firmware mới ghi rõ nguồn `Wokwi` và dashboard ẩn số đo sau 20 giây không nhận telemetry, thay bằng `--`. Muốn có số đo thật cần ESP32 và cảm biến thật.
+
 ## 6. Thứ tự chạy đầy đủ
 
 1. Build firmware lại trong VS Code sau thay đổi mới nhất.

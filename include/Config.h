@@ -50,6 +50,8 @@ constexpr uint8_t LCD_SCL_PIN = 22;
 constexpr int SOIL_RAW_DRY = 0;
 constexpr int SOIL_RAW_WET = 4095;
 
+// Ghi nhãn dữ liệu để dashboard không nhầm tín hiệu Wokwi với cảm biến thật.
+constexpr bool IS_WOKWI_SIMULATION = true;
 // Bat ON cho Wokwi; tat khi dung cam bien dat that de lay so do truc tiep.
 constexpr bool SIMULATE_SOIL_RESPONSE = true;
 // Deep Sleep danh cho ban phan cung: mac dinh tat de simulator/MQTT van cap nhat lien tuc.

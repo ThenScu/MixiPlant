@@ -158,6 +158,7 @@ void publishTelemetry(const AppState& state, unsigned long now) {
   doc["am_raw"] = state.soilRaw;
   doc["am"] = state.currentMoisture;
   doc["mua_api"] = state.rainApi;
+  doc["du_lieu_mo_phong"] = IS_WOKWI_SIMULATION;
   doc["mua_pot"] = state.rainPot;
   doc["mua"] = state.rainEff;
   doc["du_bao_hop_le"] = state.weatherValid &&
