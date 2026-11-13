@@ -67,6 +67,11 @@ constexpr int RAIN_THRESHOLD = 70;
 
 constexpr unsigned long PUMP_MIN_SWITCH_MS = 10000UL;
 constexpr unsigned long RAIN_TEST_TIMEOUT_MS = 120000UL;
+constexpr unsigned long SOIL_TEST_TIMEOUT_MS = 120000UL;
+// Vuot num tren mach lech qua muc nay thi huy override tu dashboard.
+constexpr int POT_OVERRIDE_CANCEL_DELTA = 5;
+constexpr unsigned long WEATHER_RETRY_INVALID_MS = 30000UL;
+constexpr size_t TELEMETRY_RING_CAPACITY = 60;
 constexpr unsigned long NORMAL_PULSE_MS = 120000UL;
 constexpr unsigned long SURVIVAL_PULSE_MS = 30000UL;
 constexpr unsigned long PULSE_REST_MS = 180000UL;

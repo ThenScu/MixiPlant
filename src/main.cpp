@@ -15,8 +15,12 @@ AppState app;
 
 void selectEffectiveRain(unsigned long now) {
   if (app.rainTestVal >= 0 && now < app.rainTestUntil) {
-    app.rainEff = app.rainTestVal;
-    return;
+    if (abs(app.rainPot - app.rainTestBasePot) > POT_OVERRIDE_CANCEL_DELTA) {
+      app.rainTestVal = -1;  // vuot num MUA tren mach: mach thang override
+    } else {
+      app.rainEff = app.rainTestVal;
+      return;
+    }
   }
 
   app.rainTestVal = -1;
@@ -28,6 +32,18 @@ void selectEffectiveRain(unsigned long now) {
     app.rainEff = app.rainApi;
   } else {
     app.rainEff = 0;  // offline: khong de forecast cu chan quyet dinh cuc bo
+  }
+}
+
+void applyDemoOverrides(unsigned long now) {
+  if (app.soilTestVal >= 0 && now < app.soilTestUntil) {
+    if (abs(app.soilBase - app.soilTestBasePct) > POT_OVERRIDE_CANCEL_DELTA) {
+      app.soilTestVal = -1;  // vuot num DO AM DAT tren mach: mach thang override
+    } else {
+      app.soilBase = app.soilTestVal;
+    }
+  } else {
+    app.soilTestVal = -1;
   }
 }
 
@@ -73,6 +89,7 @@ void loop() {
   updateWeather(app, now);
 
   readSensors(app);
+  applyDemoOverrides(now);
   selectEffectiveRain(now);
   if (SIMULATE_SOIL_RESPONSE) {
     updateWokwiSoilModel(now);

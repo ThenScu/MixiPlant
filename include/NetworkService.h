@@ -4,5 +4,5 @@
 
 void beginNetworkService(AppState& state);
 void updateNetworkService(AppState& state, unsigned long now);
-void publishTelemetry(const AppState& state, unsigned long now);
+void publishTelemetry(AppState& state, unsigned long now);
 

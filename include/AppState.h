@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include "Config.h"
+
 struct AppState {
   int soilBase = 0;
   int soilRaw = 0;
@@ -26,6 +28,15 @@ struct AppState {
   String lastCommandResult = "NONE";
   int rainTestVal = -1;
   unsigned long rainTestUntil = 0;
+  int rainTestBasePot = 0;
+  int soilTestVal = -1;
+  unsigned long soilTestUntil = 0;
+  int soilTestBasePct = 0;
+
+  // Ring buffer telemetry khi mat MQTT; dong bo lai khi co mang (2B).
+  String ring[TELEMETRY_RING_CAPACITY];
+  size_t ringHead = 0;
+  size_t ringCount = 0;
 
   unsigned long lastPumpChange = 0;
   unsigned long lastMqttPub = 0;

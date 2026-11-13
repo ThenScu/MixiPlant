@@ -66,7 +66,9 @@ void beginWeatherService(AppState& state) {
 }
 
 void updateWeather(AppState& state, unsigned long now) {
-  if (now - state.lastWeatherCheck >= 600000UL) {
+  const unsigned long interval =
+      state.weatherValid ? 600000UL : WEATHER_RETRY_INVALID_MS;
+  if (now - state.lastWeatherCheck >= interval) {
     state.lastWeatherCheck = now;
     fetchWeather(state);
   }
