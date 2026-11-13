@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="310" viewBox="0 0 960 310" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="960" height="310" fill="#ffffff"/>
+  <text x="480" y="26" text-anchor="middle" font-size="17" font-weight="700" fill="#19352b">Offline Ring Buffer ở Edge + đồng bộ lại khi có mạng (2B)</text>
+
+  <rect x="20" y="56" width="168" height="140" rx="10" fill="#e8f5ee" stroke="#176b4a"/>
+  <text x="104" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#176b4a">1 · ONLINE</text>
+  <text x="104" y="102" text-anchor="middle" font-size="11" fill="#19352b">Publish JSON đầy đủ</text>
+  <text x="104" y="118" text-anchor="middle" font-size="11" fill="#19352b">mỗi 5 s lên topic</text>
+  <text x="104" y="134" text-anchor="middle" font-size="11" fill="#19352b">telemetry (QoS 0)</text>
+
+  <rect x="208" y="56" width="168" height="140" rx="10" fill="#fdecea" stroke="#ad493e"/>
+  <text x="292" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#ad493e">2 · MẤT MẠNG</text>
+  <text x="292" y="102" text-anchor="middle" font-size="11" fill="#19352b">WiFi/MQTT đứt</text>
+  <text x="292" y="118" text-anchor="middle" font-size="11" fill="#19352b">Tưới vẫn quyết định</text>
+  <text x="292" y="134" text-anchor="middle" font-size="11" fill="#19352b">cục bộ; forecast hết</text>
+  <text x="292" y="150" text-anchor="middle" font-size="11" fill="#19352b">hạn bị bỏ qua</text>
+
+  <rect x="396" y="56" width="168" height="140" rx="10" fill="#fdf1e3" stroke="#c05621"/>
+  <text x="480" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#c05621">3 · ĐỆM</text>
+  <text x="480" y="102" text-anchor="middle" font-size="11" fill="#19352b">Mỗi 5 s nén gói gọn</text>
+  <text x="480" y="118" text-anchor="middle" font-size="11" fill="#19352b">~103 byte vào ring</text>
+  <text x="480" y="134" text-anchor="middle" font-size="11" fill="#19352b">buffer 60 ô (~5 phút)</text>
+  <text x="480" y="150" text-anchor="middle" font-size="11" fill="#19352b">đầy → ghi đè ô cũ nhất</text>
+
+  <rect x="584" y="56" width="168" height="140" rx="10" fill="#e8f0fa" stroke="#2b6cb0"/>
+  <text x="668" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#2b6cb0">4 · CÓ MẠNG LẠI</text>
+  <text x="668" y="102" text-anchor="middle" font-size="11" fill="#19352b">MQTT connect thành</text>
+  <text x="668" y="118" text-anchor="middle" font-size="11" fill="#19352b">công → flush lần lượt</text>
+  <text x="668" y="134" text-anchor="middle" font-size="11" fill="#19352b">các gói bf=1 đúng</text>
+  <text x="668" y="150" text-anchor="middle" font-size="11" fill="#19352b">thứ tự thời gian</text>
+
+  <rect x="772" y="56" width="168" height="140" rx="10" fill="#f0eafa" stroke="#6b46c1"/>
+  <text x="856" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#6b46c1">5 · GATEWAY</text>
+  <text x="856" y="102" text-anchor="middle" font-size="11" fill="#19352b">expand_backfill:</text>
+  <text x="856" y="118" text-anchor="middle" font-size="11" fill="#19352b">gói gọn → schema đủ</text>
+  <text x="856" y="134" text-anchor="middle" font-size="11" fill="#19352b">backfill=true + giờ</text>
+  <text x="856" y="150" text-anchor="middle" font-size="11" fill="#19352b">thiết bị → SQLite</text>
+
+  <line x1="188" y1="126" x2="206" y2="126" stroke="#555" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="376" y1="126" x2="394" y2="126" stroke="#555" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="564" y1="126" x2="582" y2="126" stroke="#555" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="752" y1="126" x2="770" y2="126" stroke="#555" stroke-width="2" marker-end="url(#arr2)"/>
+
+  <text x="480" y="230" text-anchor="middle" font-size="11" fill="#a62b25">Giới hạn: buffer nằm trên RAM — mất khi deep sleep hoặc mất điện; bản thật cần lưu NVS/flash.</text>
+  <text x="480" y="252" text-anchor="middle" font-size="11" fill="#698075">Dashboard vẽ theo received_at nên điểm backfill dồn về lúc đồng bộ; device_time_ms được lưu để đối chiếu giờ thiết bị.</text>
+  <text x="480" y="274" text-anchor="middle" font-size="11" fill="#698075">Serial in "[Sync] Dong bo lai N goi tin da dem" khi flush — dùng làm bằng chứng kiểm thử.</text>
+  <defs>
+    <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#555"/></marker>
+  </defs>
+</svg>

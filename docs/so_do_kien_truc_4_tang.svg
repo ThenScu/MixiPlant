@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="660" viewBox="0 0 960 660" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="960" height="660" fill="#ffffff"/>
+  <text x="480" y="24" text-anchor="middle" font-size="17" font-weight="700" fill="#19352b">MixiPlan — Kiến trúc 4 tầng (Câu 1)</text>
+
+  <rect x="20" y="40" width="920" height="130" rx="10" fill="#e8f5ee" stroke="#176b4a"/>
+  <text x="36" y="62" font-size="13" font-weight="700" fill="#176b4a">TẦNG 1 · THIẾT BỊ &amp; EDGE — ra quyết định tưới tại chỗ, kể cả khi mất mạng</text>
+  <rect x="36" y="74" width="180" height="80" rx="8" fill="#ffffff" stroke="#176b4a"/>
+  <text x="126" y="96" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">ESP32 DevKit v1</text>
+  <text x="126" y="114" text-anchor="middle" font-size="11" fill="#4a6357">240 MHz, 520 KB SRAM</text>
+  <text x="126" y="130" text-anchor="middle" font-size="11" fill="#4a6357">ADC 12-bit · WiFi b/g/n</text>
+  <rect x="230" y="74" width="150" height="80" rx="8" fill="#ffffff" stroke="#176b4a"/>
+  <text x="305" y="96" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Độ ẩm đất</text>
+  <text x="305" y="114" text-anchor="middle" font-size="11" fill="#4a6357">ADC GPIO34</text>
+  <text x="305" y="130" text-anchor="middle" font-size="11" fill="#4a6357">demo: potentiometer</text>
+  <rect x="394" y="74" width="140" height="80" rx="8" fill="#ffffff" stroke="#176b4a"/>
+  <text x="464" y="96" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Cảm biến mưa</text>
+  <text x="464" y="114" text-anchor="middle" font-size="11" fill="#4a6357">AO GPIO35</text>
+  <text x="464" y="130" text-anchor="middle" font-size="11" fill="#4a6357">DO GPIO27</text>
+  <rect x="548" y="74" width="170" height="80" rx="8" fill="#ffffff" stroke="#176b4a"/>
+  <text x="633" y="96" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Relay bơm + van</text>
+  <text x="633" y="114" text-anchor="middle" font-size="11" fill="#4a6357">GPIO26 / GPIO25</text>
+  <text x="633" y="130" text-anchor="middle" font-size="11" fill="#4a6357">tải 12V nguồn riêng</text>
+  <rect x="732" y="74" width="190" height="80" rx="8" fill="#ffffff" stroke="#176b4a"/>
+  <text x="827" y="96" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">2 × LCD1602 I2C</text>
+  <text x="827" y="114" text-anchor="middle" font-size="11" fill="#4a6357">0x27 + 0x26</text>
+  <text x="827" y="130" text-anchor="middle" font-size="11" fill="#4a6357">SDA21 / SCL22</text>
+
+  <line x1="480" y1="170" x2="480" y2="200" stroke="#2b6cb0" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="492" y="190" font-size="11" fill="#2b6cb0">WiFi → MQTT/JSON (QoS 0) · HTTPS lấy dự báo Open-Meteo</text>
+
+  <rect x="20" y="200" width="920" height="120" rx="10" fill="#e8f0fa" stroke="#2b6cb0"/>
+  <text x="36" y="222" font-size="13" font-weight="700" fill="#2b6cb0">TẦNG 2 · KẾT NỐI &amp; GATEWAY</text>
+  <rect x="36" y="234" width="200" height="72" rx="8" fill="#ffffff" stroke="#2b6cb0"/>
+  <text x="136" y="258" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Router WiFi → Internet</text>
+  <text x="136" y="278" text-anchor="middle" font-size="11" fill="#4a6357">802.11 b/g/n · TLS khi triển khai thật</text>
+  <rect x="260" y="234" width="280" height="72" rx="8" fill="#ffffff" stroke="#2b6cb0"/>
+  <text x="400" y="258" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">MQTT broker</text>
+  <text x="400" y="278" text-anchor="middle" font-size="11" fill="#4a6357">Demo: HiveMQ public :1883 · Mục tiêu: AWS IoT Core :8883</text>
+  <rect x="566" y="234" width="356" height="72" rx="8" fill="#ffffff" stroke="#2b6cb0"/>
+  <text x="744" y="258" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Edge Gateway — FastAPI (PC local)</text>
+  <text x="744" y="278" text-anchor="middle" font-size="11" fill="#4a6357">subscribe MQTT QoS 1 · REST API · webhook có token</text>
+
+  <line x1="480" y1="320" x2="480" y2="350" stroke="#6b46c1" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="492" y="340" font-size="11" fill="#6b46c1">MQTT QoS 1 · HTTPS</text>
+
+  <rect x="20" y="350" width="920" height="120" rx="10" fill="#f0eafa" stroke="#6b46c1"/>
+  <text x="36" y="372" font-size="13" font-weight="700" fill="#6b46c1">TẦNG 3 · CLOUD / XỬ LÝ &amp; LƯU TRỮ</text>
+  <rect x="36" y="384" width="430" height="72" rx="8" fill="#ffffff" stroke="#6b46c1"/>
+  <text x="251" y="408" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Hiện tại (demo local)</text>
+  <text x="251" y="428" text-anchor="middle" font-size="11" fill="#4a6357">SQLite WAL + Open-Meteo (cache 10 phút, prune 7 ngày)</text>
+  <rect x="490" y="384" width="432" height="72" rx="8" fill="#ffffff" stroke="#6b46c1" stroke-dasharray="5 3"/>
+  <text x="706" y="408" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Mục tiêu đề tài (chưa triển khai)</text>
+  <text x="706" y="428" text-anchor="middle" font-size="11" fill="#4a6357">AWS IoT Core Rules → Timestream/DynamoDB · OpenWeatherMap</text>
+
+  <line x1="480" y1="470" x2="480" y2="500" stroke="#c05621" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="492" y="490" font-size="11" fill="#c05621">REST/JSON + JWT (Bearer)</text>
+
+  <rect x="20" y="500" width="920" height="120" rx="10" fill="#fdf1e3" stroke="#c05621"/>
+  <text x="36" y="522" font-size="13" font-weight="700" fill="#c05621">TẦNG 4 · ỨNG DỤNG / NGƯỜI DÙNG</text>
+  <rect x="36" y="534" width="280" height="72" rx="8" fill="#ffffff" stroke="#c05621"/>
+  <text x="176" y="558" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Dashboard web</text>
+  <text x="176" y="578" text-anchor="middle" font-size="11" fill="#4a6357">biểu đồ lịch sử · dự báo thời tiết · JWT/RBAC</text>
+  <rect x="340" y="534" width="200" height="72" rx="8" fill="#ffffff" stroke="#c05621"/>
+  <text x="440" y="558" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">REST API</text>
+  <text x="440" y="578" text-anchor="middle" font-size="11" fill="#4a6357">latest · history · command · weather</text>
+  <rect x="564" y="534" width="358" height="72" rx="8" fill="#ffffff" stroke="#c05621"/>
+  <text x="743" y="558" text-anchor="middle" font-size="12" font-weight="600" fill="#19352b">Điều khiển (chỉ admin)</text>
+  <text x="743" y="578" text-anchor="middle" font-size="11" fill="#4a6357">ON/OFF/AUTO · demo đầu vào SOIL/RAIN · ACK theo dõi</text>
+
+  <text x="480" y="644" text-anchor="middle" font-size="11" fill="#698075">Chiều lệnh: Dashboard → Gateway → MQTT broker → ESP32; ESP32 gửi ACK ngược lại. Khối nét đứt = phần mở rộng chưa triển khai.</text>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#555"/></marker>
+  </defs>
+</svg>
