@@ -95,6 +95,12 @@ def init_db() -> None:
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_time ON telemetry(id DESC)")
         conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_telemetry_received ON telemetry(received_at DESC)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_commands_created ON commands(created_at DESC)"
+        )
+        conn.execute(
             """CREATE TABLE IF NOT EXISTS command_acks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 received_at TEXT NOT NULL,
@@ -146,12 +152,34 @@ def on_message(_client: mqtt.Client, _userdata: Any, message: mqtt.MQTTMessage) 
         payload = json.loads(message.payload.decode("utf-8"))
         if not isinstance(payload, dict):
             return
+        if payload.get("bf") == 1:
+            payload = expand_backfill(payload)
         if message.topic == ACK_TOPIC:
             store_ack(payload)
         else:
             store_telemetry(payload)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         print(f"[MQTT] Ignoring invalid JSON: {exc}", flush=True)
+
+
+def expand_backfill(frame: dict[str, Any]) -> dict[str, Any]:
+    """Goi tin gon tu ring buffer ESP32 -> schema day du cua dashboard."""
+    return {
+        "device_time_ms": frame.get("t"),
+        "backfill": True,
+        "am_goc": frame.get("ag"),
+        "am_raw": frame.get("ar"),
+        "am": frame.get("a"),
+        "mua_api": frame.get("ma"),
+        "mua_pot": frame.get("mp"),
+        "mua": frame.get("m"),
+        "troi_mua": bool(frame.get("tm")),
+        "bom": "ON" if frame.get("b") else "OFF",
+        "chedo": frame.get("c"),
+        "wifi": bool(frame.get("w")),
+        "mqtt": True,
+        "du_lieu_mo_phong": True,
+    }
 
 
 def start_mqtt() -> mqtt.Client:
@@ -186,11 +214,19 @@ def check_environment() -> None:
         print("[Security] Public unauthenticated MQTT is demo-only; do not attach real actuators.", flush=True)
 
 
+def prune_old_data(days: int = 7) -> None:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    with db_lock, db_connect() as conn:
+        conn.execute("DELETE FROM telemetry WHERE received_at < ?", (cutoff,))
+        conn.execute("DELETE FROM command_acks WHERE received_at < ?", (cutoff,))
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     global mqtt_client
     check_environment()
     init_db()
+    prune_old_data()
     mqtt_client = start_mqtt()
     yield
     if mqtt_client:
@@ -207,7 +243,7 @@ class LoginRequest(BaseModel):
 
 
 class CommandRequest(BaseModel):
-    state: str = Field(pattern="^(ON|OFF|AUTO)$")
+    state: str = Field(pattern=r"^(ON|OFF|AUTO|(SOIL|RAIN):-?\d{1,3})$")
 
 
 def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> dict[str, str]:
@@ -357,6 +393,10 @@ def latest_ack(_user: dict[str, str] = Depends(current_user)) -> dict[str, Any] 
 
 @app.post("/api/command")
 def send_command(request: CommandRequest, _user: dict[str, str] = Depends(require_admin)) -> dict[str, str]:
+    if request.state.startswith(("SOIL:", "RAIN:")):
+        value = int(request.state.split(":", 1)[1])
+        if value < -1 or value > 100:
+            raise HTTPException(status_code=422, detail="Gia tri override phai trong -1..100")
     if not broker_connected.is_set() or mqtt_client is None:
         raise HTTPException(status_code=503, detail="MQTT broker is offline")
     command_id = uuid.uuid4().hex
