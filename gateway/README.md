@@ -14,6 +14,10 @@ Lần đầu script tự tạo Python virtual environment, cài packages và t�
 
 Mở `http://127.0.0.1:8000`. Đăng nhập bằng `admin` hoặc `viewer` và mật khẩu tương ứng trong `.env`. Viewer chỉ xem; admin mới có nút gửi lệnh. Dashboard cần broker MQTT kết nối được và thiết bị đang publish đúng topic. Dữ liệu sẽ được lưu ở `gateway/data/mixiplan.sqlite3`.
 
+## Demo đầu vào trên dashboard
+
+Khối **Demo đầu vào** (chỉ admin) gửi lệnh `SOIL:<0-100>` / `RAIN:<0-100>` để ép độ ẩm đất và mưa khi demo, không cần chạm mạch Wokwi. Override tự hết hạn sau 2 phút; chỉnh núm tương ứng trên mạch lệch quá 5% cũng hủy override ngay (mạch luôn thắng). Nút **Trả về mạch** gửi `SOIL:-1` / `RAIN:-1` để hủy sớm. Telemetry backfill từ ring buffer của ESP32 được gateway tự bung về schema đầy đủ (`backfill=true`, kèm `device_time_ms`).
+
 ## Webhook nhận telemetry
 
 Gửi POST JSON tới `http://127.0.0.1:8000/api/webhooks/telemetry` với header `X-Webhook-Token: <WEBHOOK_TOKEN>`. Endpoint chỉ nhận dữ liệu, không tự đẩy lệnh đến ESP32. Firmware hiện gửi telemetry bằng MQTT, vì vậy webhook chỉ có tác dụng khi một dịch vụ khác gọi endpoint.
