@@ -104,7 +104,7 @@ void loop() {
   applyActuators();
   updateDisplay(app, now, WiFi.status() == WL_CONNECTED);
 
-  if (now - app.lastMqttPub >= 5000UL) {
+  if (now - app.lastMqttPub >= TELEMETRY_PUBLISH_INTERVAL_MS) {
     app.lastMqttPub = now;
     publishTelemetry(app, now);
   }

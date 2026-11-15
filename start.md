@@ -32,7 +32,7 @@ Firmware hiện được cấu hình sẵn cho Wi‑Fi của Wokwi:
 - Mật khẩu: để trống
 - MQTT broker demo: `broker.hivemq.com`, cổng `1883` (không mã hóa)
 
-Khi Wokwi đang chạy, ESP32 tự thử kết nối. Serial Monitor báo kết quả Wi‑Fi/MQTT. Thiết bị gửi trạng thái mỗi khoảng 5 giây lên các topic:
+Khi Wokwi đang chạy, ESP32 tự thử kết nối. Serial Monitor báo kết quả Wi‑Fi/MQTT. Thiết bị gửi trạng thái khoảng mỗi 2,5 giây lên các topic:
 
 | Topic | Dùng để làm gì |
 |---|---|

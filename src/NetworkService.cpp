@@ -155,6 +155,11 @@ void beginNetworkService(AppState& state) {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   state.lastWifiAttempt = millis();
 
+  if (!mqtt.setBufferSize(MQTT_PACKET_BUFFER_SIZE)) {
+    Serial.printf("[MQTT] Khong cap phat duoc buffer %u byte\n", MQTT_PACKET_BUFFER_SIZE);
+  } else {
+    Serial.printf("[MQTT] Buffer packet: %u byte\n", MQTT_PACKET_BUFFER_SIZE);
+  }
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
   mqtt.setKeepAlive(30);
@@ -237,6 +242,13 @@ void publishTelemetry(AppState& state, unsigned long now) {
 
   String output;
   serializeJson(doc, output);
-  mqtt.publish(TOPIC_PUB, output.c_str());
+  if (!mqtt.publish(TOPIC_PUB, output.c_str())) {
+    Serial.printf("[MQTT] Gui telemetry that bai (%u byte, state=%d)\n",
+                  static_cast<unsigned>(output.length()), mqtt.state());
+    ringPush(state, compactTelemetry(state, now));
+  } else {
+    Serial.printf("[MQTT] Gui telemetry thanh cong (%u byte)\n",
+                  static_cast<unsigned>(output.length()));
+  }
 }
 
