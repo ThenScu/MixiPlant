@@ -53,11 +53,13 @@ constexpr int SOIL_RAW_WET = 4095;
 
 // Ghi nhãn dữ liệu để dashboard không nhầm tín hiệu Wokwi với cảm biến thật.
 constexpr bool IS_WOKWI_SIMULATION = true;
-// Bat ON cho Wokwi; tat khi dung cam bien dat that de lay so do truc tiep.
-constexpr bool SIMULATE_SOIL_RESPONSE = false;
-// Deep Sleep danh cho ban phan cung: mac dinh tat de simulator/MQTT van cap nhat lien tuc.
-constexpr bool ENABLE_LOW_POWER_DEEP_SLEEP = true;
-constexpr unsigned long LOW_POWER_WAKE_INTERVAL_MS = 30000UL;
+// Wokwi: mo hinh do am tang khi bom bat de dashboard co phan hoi de thay.
+// Khi dung dau do that, tat co che nay de doc truc tiep cam bien.
+constexpr bool SIMULATE_SOIL_RESPONSE = true;
+// Tat Deep Sleep trong Wokwi de LCD va dashboard cap nhat lien tuc.
+// Chi bat khi thu tiet kiem dien tren phan cung that.
+constexpr bool ENABLE_LOW_POWER_DEEP_SLEEP = false;
+constexpr unsigned long LOW_POWER_WAKE_INTERVAL_MS = 300000UL;
 
 // Nguong dieu khien demo. 40% la nguong kho bat dau chu ky, 65% la nguong dung.
 constexpr int CRITICAL_LOW = 15;
