@@ -54,12 +54,12 @@ void updateWokwiSoilModel(unsigned long now) {
   app.lastSecond = now;
 
   float delta = 0;
-  if (app.pumpActive) delta += 2.0f;
-  else delta -= 1.0f;
+  if (app.pumpActive) delta += 1.0f;
+  else delta -= 0.05f;
 
-  if (app.rainingNow) delta += 1.5f;
-  else if (app.rainEff >= RAIN_THRESHOLD) delta += 1.0f;
-  else if (app.rainEff >= RAIN_LIGHT) delta += 0.3f;
+  if (app.rainingNow) delta += 0.5f;
+  else if (app.rainEff >= RAIN_THRESHOLD) delta += 0.5f;
+  else if (app.rainEff >= RAIN_LIGHT) delta += 0.1f;
 
   app.irrigBoost += delta;
   app.irrigBoost = constrain(app.irrigBoost, -40.0f, 80.0f);
@@ -100,9 +100,11 @@ void loop() {
   const bool soilOverrideActive = applyDemoOverrides(now);
   selectEffectiveRain(now);
   if (soilOverrideActive) {
-    // Slider demo ep dung gia tri chinh xac; khong cong tienh huong do bom.
-    app.irrigBoost = 0;
-    app.currentMoisture = constrain(app.soilTestVal, 0, 100);
+    // Dùng slider làm mốc ban đầu, sau đó mô phỏng phản hồi của bơm/mưa.
+    // Không cần bấm "Trả về mạch" để độ ẩm tiếp tục thay đổi.
+    updateWokwiSoilModel(now);
+    app.currentMoisture = constrain(
+        static_cast<int>(app.soilTestVal + app.irrigBoost), 0, 100);
   } else if (SIMULATE_SOIL_RESPONSE) {
     updateWokwiSoilModel(now);
     app.currentMoisture = constrain(

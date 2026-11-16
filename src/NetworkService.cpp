@@ -180,6 +180,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       appState->soilTestVal = constrain(value, 0, 100);
       appState->soilTestUntil = millis() + SOIL_TEST_TIMEOUT_MS;
       appState->soilTestBasePct = appState->soilBase;
+      appState->irrigBoost = 0;
     }
     Serial.printf("[Test] Ep do am=%d%% trong 2 phut\n", value);
   } else {
