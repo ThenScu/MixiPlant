@@ -18,6 +18,58 @@ WiFiClient wifiClient;
 #endif
 PubSubClient mqtt(wifiClient);
 AppState* appState = nullptr;
+bool demoWifiForcedOffline = false;
+String serialCommand;
+bool wifiDemoButtonWasHigh = true;
+unsigned long lastWifiDemoButtonPress = 0;
+
+void setDemoWifiOffline(bool offline, AppState& state) {
+  if (offline == demoWifiForcedOffline) return;
+  demoWifiForcedOffline = offline;
+  if (offline) {
+    mqtt.disconnect();
+    WiFi.disconnect(true, false);
+    state.mqttOnline = false;
+    Serial.println("[Demo] Wi-Fi ngat; ESP32 van xu ly cam bien tai cho.");
+  } else {
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    state.lastWifiAttempt = millis();
+    Serial.println("[Demo] Dang ket noi lai Wi-Fi; MQTT se tu ket noi lai.");
+  }
+}
+
+void handleWifiDemoButton(AppState& state, unsigned long now) {
+  const bool buttonIsHigh = digitalRead(WIFI_DEMO_BUTTON_PIN) == HIGH;
+  if (wifiDemoButtonWasHigh && !buttonIsHigh &&
+      now - lastWifiDemoButtonPress >= 250UL) {
+    lastWifiDemoButtonPress = now;
+    state.wifiOffActive = false;  // thao tac tay huy cua so WIFI:0 tu dong
+    setDemoWifiOffline(!demoWifiForcedOffline, state);
+  }
+  wifiDemoButtonWasHigh = buttonIsHigh;
+}
+
+void handleSerialNetworkCommand(AppState& state) {
+  while (Serial.available() > 0) {
+    const char ch = static_cast<char>(Serial.read());
+    if (ch != '\r' && ch != '\n') {
+      serialCommand += ch;
+      continue;
+    }
+    serialCommand.trim();
+    serialCommand.toUpperCase();
+    if (serialCommand == "OFFLINE" || serialCommand == "ONLINE") {
+      state.wifiOffActive = false;
+      setDemoWifiOffline(serialCommand == "OFFLINE", state);
+    } else if (!serialCommand.isEmpty()) {
+      Serial.println("[Demo] Go OFFLINE hoac ONLINE.");
+    }
+    serialCommand = "";
+  }
+}
+
 
 // Goi tin gon cho ring buffer / LoRa: key ngan, bo truong lap (2B.1).
 String compactTelemetry(const AppState& s, unsigned long now) {
@@ -154,11 +206,19 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 void beginNetworkService(AppState& state) {
   appState = &state;
+  pinMode(WIFI_DEMO_BUTTON_PIN, INPUT_PULLUP);
+  wifiDemoButtonWasHigh = digitalRead(WIFI_DEMO_BUTTON_PIN) == HIGH;
+  Serial.println("[Demo] Bam nut WIFI de ngat/ket noi lai.");
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   state.lastWifiAttempt = millis();
 
+  if (!mqtt.setBufferSize(MQTT_PACKET_BUFFER_SIZE)) {
+    Serial.printf("[MQTT] Khong cap phat duoc buffer %u byte\n", MQTT_PACKET_BUFFER_SIZE);
+  } else {
+    Serial.printf("[MQTT] Buffer packet: %u byte\n", MQTT_PACKET_BUFFER_SIZE);
+  }
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
   mqtt.setKeepAlive(30);
@@ -178,31 +238,25 @@ void beginNetworkService(AppState& state) {
 }
 
 void updateNetworkService(AppState& state, unsigned long now) {
+  handleWifiDemoButton(state, now);
+  handleSerialNetworkCommand(state);
+  // WIFI:0 chi hen gio trong callback (ACK phai gui truoc); ngat/noi lai that su o day.
   if (state.wifiOffActive) {
     if (now >= state.wifiOffUntil) {
       state.wifiOffActive = false;
-      WiFi.setAutoReconnect(true);
-      state.lastWifiAttempt = now - WIFI_RETRY_MS;  // noi lai ngay lap tuc
+      setDemoWifiOffline(false, state);
       Serial.println("[Demo] Het 60s offline, dang noi lai WiFi");
-    } else {
-      if (WiFi.status() == WL_CONNECTED) {
-        WiFi.setAutoReconnect(false);
-        WiFi.disconnect();
-        Serial.println("[Demo] Da ngat WiFi theo lenh WIFI:0");
-      }
-      mqtt.loop();
-      state.mqttOnline = mqtt.connected();
-      return;
+    } else if (!demoWifiForcedOffline) {
+      setDemoWifiOffline(true, state);
     }
   }
-
-  if (WiFi.status() != WL_CONNECTED && now - state.lastWifiAttempt >= WIFI_RETRY_MS) {
+  if (!demoWifiForcedOffline && WiFi.status() != WL_CONNECTED && now - state.lastWifiAttempt >= WIFI_RETRY_MS) {
     state.lastWifiAttempt = now;
     WiFi.reconnect();
     Serial.println("[WiFi] Mat ket noi, dang thu lai");
   }
 
-  if (!mqtt.connected() && WiFi.status() == WL_CONNECTED &&
+  if (!demoWifiForcedOffline && !mqtt.connected() && WiFi.status() == WL_CONNECTED &&
       now - state.lastMqttAttempt >= state.mqttRetryDelay) {
     state.lastMqttAttempt = now;
     const String clientId = "ESP32-MixiPlan-" + String((uint32_t)ESP.getEfuseMac(), HEX);
@@ -259,6 +313,13 @@ void publishTelemetry(AppState& state, unsigned long now) {
 
   String output;
   serializeJson(doc, output);
-  mqtt.publish(TOPIC_PUB, output.c_str());
+  if (!mqtt.publish(TOPIC_PUB, output.c_str())) {
+    Serial.printf("[MQTT] Gui telemetry that bai (%u byte, state=%d)\n",
+                  static_cast<unsigned>(output.length()), mqtt.state());
+    ringPush(state, compactTelemetry(state, now));
+  } else {
+    Serial.printf("[MQTT] Gui telemetry thanh cong (%u byte)\n",
+                  static_cast<unsigned>(output.length()));
+  }
 }
 

@@ -5,7 +5,7 @@
   <rect x="20" y="56" width="168" height="140" rx="10" fill="#e8f5ee" stroke="#176b4a"/>
   <text x="104" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#176b4a">1 · ONLINE</text>
   <text x="104" y="102" text-anchor="middle" font-size="11" fill="#19352b">Publish JSON đầy đủ</text>
-  <text x="104" y="118" text-anchor="middle" font-size="11" fill="#19352b">mỗi 5 s lên topic</text>
+  <text x="104" y="118" text-anchor="middle" font-size="11" fill="#19352b">mỗi 2,5 s lên topic</text>
   <text x="104" y="134" text-anchor="middle" font-size="11" fill="#19352b">telemetry (QoS 0)</text>
 
   <rect x="208" y="56" width="168" height="140" rx="10" fill="#fdecea" stroke="#ad493e"/>
@@ -19,7 +19,7 @@
   <text x="480" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#c05621">3 · ĐỆM</text>
   <text x="480" y="102" text-anchor="middle" font-size="11" fill="#19352b">Mỗi 5 s nén gói gọn</text>
   <text x="480" y="118" text-anchor="middle" font-size="11" fill="#19352b">~103 byte vào ring</text>
-  <text x="480" y="134" text-anchor="middle" font-size="11" fill="#19352b">buffer 60 ô (~5 phút)</text>
+  <text x="480" y="134" text-anchor="middle" font-size="11" fill="#19352b">buffer 120 ô (~5 phút)</text>
   <text x="480" y="150" text-anchor="middle" font-size="11" fill="#19352b">đầy → ghi đè ô cũ nhất</text>
 
   <rect x="584" y="56" width="168" height="140" rx="10" fill="#e8f0fa" stroke="#2b6cb0"/>

@@ -11,8 +11,8 @@ MixiPlan là mô hình tưới thông minh dùng độ ẩm đất và dự báo
 | Nhóm yêu cầu | Hiện trạng trong project | Việc còn lại |
 |---|---|---|
 | **2A – Hardware & Embedded**: ESP32, cảm biến, relay/van, lọc và hiệu chuẩn, quyết định tưới | Firmware lọc 2 lớp: trimmed mean 10 mẫu ADC + EMA α=0.3; mốc hiệu chuẩn; ngưỡng bật 40%, dừng 65%, sinh tồn 15%; tưới xung 2 phút/nghỉ 3 phút; relay bơm/van; Deep Sleep có điều kiện (mặc định tắt). Có sơ đồ mạch đề xuất với lọc RC + diode flyback (`docs/so_do_mach_loc_va_bao_ve.svg`) và bảng tính pin mục 8. | Chưa đo/hiệu chuẩn cảm biến thật, chưa xác nhận ngưỡng theo cây/đất, dòng relay, thử lỗi cảm biến hay kiểm chứng tiêu thụ điện. Số liệu pin là ước lượng có giả định, chưa đo. NPK/EC không nằm trong demo vì chưa có đầu dò thật. |
-| **2B – Networking & Edge**: LoRa/LoRaWAN, gateway, đệm offline và đồng bộ | ESP32 có Wi‑Fi reconnect, Open‑Meteo, MQTT publish/subscribe; **ring buffer 60 gói compact trên ESP32 + tự flush khi MQTT nối lại**; gateway FastAPI nhận MQTT, bung gói backfill, lưu SQLite, webhook có token, ACK lệnh. Đặc tả gói tin gọn ~103 byte (mục 9) vừa 1 frame LoRaWAN SF7. | Chưa có radio LoRa/LoRaWAN thật hay gateway LoRa; buffer nằm trên RAM (mất khi deep sleep/mất điện); webhook chưa nối dịch vụ bên ngoài. |
-| **2C – Cloud & Security**: AWS IoT Core/OpenWeatherMap, lưu lịch sử, API an toàn, TLS/JWT/RBAC, dashboard | Dashboard web local đầy đủ: thẻ số liệu, biểu đồ lịch sử, dự báo thời tiết, điều khiển admin, **khối demo đầu vào (ép độ ẩm/mưa)**, nhãn nguồn mô phỏng, ẩn số cũ. SQLite có index thời gian + prune 7 ngày; JWT 8 giờ, RBAC admin/viewer, webhook token, ACK lệnh, cấu hình MQTT TLS tùy chọn. | Chưa deploy AWS IoT Core, chưa chứng chỉ/broker riêng, chưa OpenWeatherMap (đang Open‑Meteo), chưa HTTPS/reverse proxy. Public HiveMQ không an toàn cho thiết bị thật. |
+| **2B – Networking & Edge**: LoRa/LoRaWAN, gateway, đệm offline và đồng bộ | ESP32 có Wi‑Fi reconnect, Open‑Meteo, MQTT publish/subscribe; **ring buffer 120 gói compact trên ESP32 + tự flush khi MQTT nối lại (xấp xỉ 5 phút)**; gateway FastAPI nhận MQTT, bung gói backfill, lưu SQLite, webhook có token, ACK lệnh. Đặc tả gói tin gọn ~103 byte (mục 9) vừa 1 frame LoRaWAN SF7. | Chưa có radio LoRa/LoRaWAN thật hay gateway LoRa; buffer nằm trên RAM (mất khi deep sleep/mất điện); webhook chưa nối dịch vụ bên ngoài. |
+| **2C – Cloud & Security**: AWS IoT Core/OpenWeatherMap, lưu lịch sử, API an toàn, TLS/JWT/RBAC, dashboard | Dashboard web local đầy đủ: thẻ số liệu, biểu đồ lịch sử, dự báo thời tiết, điều khiển admin, **khối demo đầu vào (ép độ ẩm/mưa)**, nhãn nguồn mô phỏng, giữ số đo cuối và đánh dấu rõ khi dữ liệu cũ. SQLite có index thời gian + prune 7 ngày; JWT 8 giờ, RBAC admin/viewer, webhook token, ACK lệnh, cấu hình MQTT TLS tùy chọn. | Chưa deploy AWS IoT Core, chưa chứng chỉ/broker riêng, chưa OpenWeatherMap (đang Open‑Meteo), chưa HTTPS/reverse proxy. Public HiveMQ không an toàn cho thiết bị thật. |
 
 **Phạm vi hiện tại:** firmware, gateway và dashboard đã có mã nguồn trong repo; firmware đã build `[SUCCESS]` (RAM 15.8%, Flash 39.1% với `huge_app.csv`). Việc này không đồng nghĩa đã chạy E2E trên Wokwi hay đã triển khai cloud. Các mục LoRa, AWS, TLS thực tế và đo điện năng vẫn cần phần cứng, tài khoản/chứng thư và kết quả chạy để xác nhận.
 
@@ -38,15 +38,15 @@ Demo tập trung vào độ ẩm đất và thời tiết đúng với logic tư
 4. ESP32 lấy xác suất mưa giờ hiện tại từ Open‑Meteo mỗi 10 phút; **khi chưa có dữ liệu hợp lệ, thử lại mỗi 30 giây** thay vì chờ 10 phút. Forecast cũ hơn 15 phút bị đánh dấu hết hạn và không cản quyết định cục bộ.
 5. Nếu đất dưới 15%, bật tưới sinh tồn bất kể dự báo mưa; chu kỳ demo 30 giây bật, 3 phút nghỉ.
 6. Nếu đất dưới 40% và không mưa lớn, tưới theo xung 2 phút bật, 3 phút nghỉ. Mưa từ 70% trở lên hoãn chu kỳ thường. Đất đạt 65% thì dừng.
-7. Lệnh MQTT `ON`, `OFF`, `AUTO`, `SOIL:x`, `RAIN:x` có ACK. Trạng thái gửi định kỳ 5 giây/lần dưới dạng JSON lên topic telemetry.
-8. **Khi mất MQTT**: mỗi lần publish 5 giây bị hụt được nén thành gói compact (~103 byte) đưa vào ring buffer 60 ô; khi nối lại, flush toàn bộ theo thứ tự thời gian (mục 9).
+7. Lệnh MQTT `ON`, `OFF`, `AUTO`, `SOIL:x`, `RAIN:x` có ACK. Trạng thái gửi định kỳ 2,5 giây/lần dưới dạng JSON lên topic telemetry.
+8. **Khi mất MQTT**: mỗi lần publish 2,5 giây bị hụt được nén thành gói compact (~103 byte) đưa vào ring buffer 120 ô; khi nối lại, flush toàn bộ theo thứ tự thời gian (mục 9).
 9. Khi mất Wi‑Fi/API, chương trình tiếp tục đọc cảm biến và điều khiển tại ESP32; MQTT/Wi‑Fi tự thử lại với backoff 5→60 giây.
 
 ## 5. Gateway, webhook và dashboard local
 
 Thư mục `gateway/` chứa API FastAPI và trang web tĩnh. Gateway subscribe telemetry/ACK MQTT (QoS 1) và ghi SQLite; **gói backfill `bf=1` được `expand_backfill()` bung về schema đầy đủ** kèm `backfill=true` và `device_time_ms`. Endpoint `/api/webhooks/telemetry` nhận JSON khi có `X-Webhook-Token`; đăng nhập tạo JWT 8 giờ; viewer chỉ đọc, admin mới được gửi lệnh. Lệnh gắn ID, lưu `queued`, cập nhật `acknowledged/rejected` khi nhận ACK. Lệnh `SOIL:/RAIN:` bị chặn ngoài khoảng −1..100 (HTTP 422). SQLite có index theo `received_at`/`created_at` và **prune dữ liệu cũ hơn 7 ngày** khi khởi động.
 
-Dashboard gồm: 4 thẻ chính (độ ẩm đất, mưa hiệu lực, bơm, MQTT) + 3 thẻ mở rộng (**ADC đất sau lọc, nhiệt độ/độ ẩm không khí**); biểu đồ lịch sử; dự báo hiện tại/8 giờ/3 ngày cho trung tâm TP.HCM (cache 10 phút); khối điều khiển ON/OFF/AUTO; **khối "Demo đầu vào" chỉ admin**: 2 thanh trượt độ ẩm/mưa, nút **Áp dụng** (gửi `SOIL:x` + `RAIN:x`), nút **Trả về mạch** (gửi `SOIL:-1` + `RAIN:-1`), badge "Đất/Mưa đang ép" đọc từ telemetry. Telemetry Wokwi được gắn nhãn mô phỏng; bản tin cũ hơn 20 giây bị ẩn số thay vì trình bày như số đo trực tiếp.
+Dashboard gồm: 4 thẻ chính (độ ẩm đất, mưa hiệu lực, bơm, MQTT) + 3 thẻ mở rộng (**ADC đất sau lọc, nhiệt độ/độ ẩm không khí**); biểu đồ lịch sử; dự báo hiện tại/8 giờ/3 ngày cho trung tâm TP.HCM (cache 10 phút); khối điều khiển ON/OFF/AUTO; **khối "Demo đầu vào" chỉ admin**: 2 thanh trượt độ ẩm/mưa, nút **Áp dụng** (gửi `SOIL:x` + `RAIN:x`), nút **Trả về mạch** (gửi `SOIL:-1` + `RAIN:-1`), badge "Đất/Mưa đang ép" đọc từ telemetry. Telemetry Wokwi được gắn nhãn mô phỏng; khi quá 20 giây không có bản tin mới, dashboard vẫn giữ số đo cuối nhưng tô cảnh báo và ghi rõ ESP32 offline, không coi đó là số trực tiếp.
 
 Từ terminal CMD ở thư mục gốc project, chạy `gateway\run.bat`; lần đầu script tự tạo môi trường Python và cài dependencies. Mở `http://127.0.0.1:8000`. Gateway cần Internet để kết nối broker. Broker công cộng chỉ dùng demo; API local không được phơi ra Internet nếu chưa có HTTPS/reverse proxy.
 
@@ -158,7 +158,7 @@ Trường bỏ ở gói compact: `du_lieu_mo_phong` (gateway mặc định true)
 
 ### 9.2. Offline Ring Buffer tại Edge (2B.2)
 
-- Sức chứa `TELEMETRY_RING_CAPACITY = 60` ô × chu kỳ 5 s ≈ **5 phút dữ liệu**; đầy thì ghi đè ô cũ nhất (ưu tiên dữ liệu mới).
+- Sức chứa `TELEMETRY_RING_CAPACITY = 120` ô × chu kỳ 2,5 s ≈ **5 phút dữ liệu**; đầy thì ghi đè ô cũ nhất (ưu tiên dữ liệu mới).
 - Mỗi lần đến hạn publish mà MQTT đứt, `publishTelemetry()` đóng gói compact và `ringPush()` thay vì bỏ dữ liệu.
 - Buffer nằm trên RAM: mất khi deep sleep/mất điện. Bản triển khai thật cần ghi NVS/flash hoặc RTC memory — ghi rõ trong phần giới hạn.
 
@@ -167,7 +167,7 @@ Trường bỏ ở gói compact: `du_lieu_mo_phong` (gateway mặc định true)
 Hình: `docs/so_do_dong_bo_offline.svg`.
 
 1. WiFi reconnect mỗi 10 s; MQTT retry backoff 5 s → 60 s.
-2. MQTT connect thành công → subscribe lệnh, in `[Sync] Dong bo lai N goi tin da dem`, `flushRing()` gửi lần lượt 60 gói `bf=1` đúng thứ tự cũ→mới.
+2. MQTT connect thành công → subscribe lệnh, in `[Sync] Dong bo lai N goi tin da dem`, `flushRing()` gửi lần lượt tối đa 120 gói `bf=1` đúng thứ tự cũ→mới.
 3. Gateway `on_message` thấy `bf==1` → `expand_backfill()` ánh xạ về schema đầy đủ, thêm `backfill=true`, `device_time_ms`, rồi lưu SQLite như telemetry thường.
 4. Dashboard phân biệt điểm backfill qua cờ này; trục thời gian hiện vẽ theo `received_at` nên các điểm dồn về lúc đồng bộ — `device_time_ms` lưu sẵn để nâng cấp trục giờ thiết bị sau.
 
