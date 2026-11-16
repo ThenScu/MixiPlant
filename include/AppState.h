@@ -32,6 +32,8 @@ struct AppState {
   int soilTestVal = -1;
   unsigned long soilTestUntil = 0;
   int soilTestBasePct = 0;
+  bool wifiOffActive = false;
+  unsigned long wifiOffUntil = 0;
 
   // Ring buffer telemetry khi mat MQTT; dong bo lai khi co mang (2B).
   String ring[TELEMETRY_RING_CAPACITY];

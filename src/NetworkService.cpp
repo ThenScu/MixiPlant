@@ -134,6 +134,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       appState->soilTestBasePct = appState->soilBase;
     }
     Serial.printf("[Test] Ep do am=%d%% trong 2 phut\n", value);
+  } else if (requestedState == "WIFI:0") {
+    appState->wifiOffActive = true;
+    appState->wifiOffUntil = millis() + WIFI_OFF_DEMO_MS;
+    Serial.println("[Demo] WIFI:0 - se ngat WiFi 60s, van chay cuc bo + dem ring");
   } else {
     accepted = false;
   }
@@ -174,6 +178,24 @@ void beginNetworkService(AppState& state) {
 }
 
 void updateNetworkService(AppState& state, unsigned long now) {
+  if (state.wifiOffActive) {
+    if (now >= state.wifiOffUntil) {
+      state.wifiOffActive = false;
+      WiFi.setAutoReconnect(true);
+      state.lastWifiAttempt = now - WIFI_RETRY_MS;  // noi lai ngay lap tuc
+      Serial.println("[Demo] Het 60s offline, dang noi lai WiFi");
+    } else {
+      if (WiFi.status() == WL_CONNECTED) {
+        WiFi.setAutoReconnect(false);
+        WiFi.disconnect();
+        Serial.println("[Demo] Da ngat WiFi theo lenh WIFI:0");
+      }
+      mqtt.loop();
+      state.mqttOnline = mqtt.connected();
+      return;
+    }
+  }
+
   if (WiFi.status() != WL_CONNECTED && now - state.lastWifiAttempt >= WIFI_RETRY_MS) {
     state.lastWifiAttempt = now;
     WiFi.reconnect();
