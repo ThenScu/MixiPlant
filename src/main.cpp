@@ -36,16 +36,17 @@ void selectEffectiveRain(unsigned long now) {
   }
 }
 
-void applyDemoOverrides(unsigned long now) {
+bool applyDemoOverrides(unsigned long now) {
   if (app.soilTestVal >= 0 && now < app.soilTestUntil) {
     if (abs(app.soilBase - app.soilTestBasePct) > POT_OVERRIDE_CANCEL_DELTA) {
       app.soilTestVal = -1;  // vuot num DO AM DAT tren mach: mach thang override
     } else {
-      app.soilBase = app.soilTestVal;
+      return true;
     }
   } else {
     app.soilTestVal = -1;
   }
+  return false;
 }
 
 void updateWokwiSoilModel(unsigned long now) {
@@ -96,9 +97,13 @@ void loop() {
   updateWeather(app, now);
 
   readSensors(app);
-  applyDemoOverrides(now);
+  const bool soilOverrideActive = applyDemoOverrides(now);
   selectEffectiveRain(now);
-  if (SIMULATE_SOIL_RESPONSE) {
+  if (soilOverrideActive) {
+    // Slider demo ep dung gia tri chinh xac; khong cong tienh huong do bom.
+    app.irrigBoost = 0;
+    app.currentMoisture = constrain(app.soilTestVal, 0, 100);
+  } else if (SIMULATE_SOIL_RESPONSE) {
     updateWokwiSoilModel(now);
     app.currentMoisture = constrain(
         static_cast<int>(app.soilBase + app.irrigBoost), 0, 100);
