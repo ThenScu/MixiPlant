@@ -45,6 +45,7 @@ void handleWifiDemoButton(AppState& state, unsigned long now) {
   if (wifiDemoButtonWasHigh && !buttonIsHigh &&
       now - lastWifiDemoButtonPress >= 250UL) {
     lastWifiDemoButtonPress = now;
+    state.wifiOffActive = false;  // thao tac tay huy cua so WIFI:0 tu dong
     setDemoWifiOffline(!demoWifiForcedOffline, state);
   }
   wifiDemoButtonWasHigh = buttonIsHigh;
@@ -59,9 +60,12 @@ void handleSerialNetworkCommand(AppState& state) {
     }
     serialCommand.trim();
     serialCommand.toUpperCase();
-    if (serialCommand == "OFFLINE") setDemoWifiOffline(true, state);
-    else if (serialCommand == "ONLINE") setDemoWifiOffline(false, state);
-    else if (!serialCommand.isEmpty()) Serial.println("[Demo] Go OFFLINE hoac ONLINE.");
+    if (serialCommand == "OFFLINE" || serialCommand == "ONLINE") {
+      state.wifiOffActive = false;
+      setDemoWifiOffline(serialCommand == "OFFLINE", state);
+    } else if (!serialCommand.isEmpty()) {
+      Serial.println("[Demo] Go OFFLINE hoac ONLINE.");
+    }
     serialCommand = "";
   }
 }
@@ -183,6 +187,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       appState->irrigBoost = 0;
     }
     Serial.printf("[Test] Ep do am=%d%% trong 2 phut\n", value);
+  } else if (requestedState == "WIFI:0") {
+    appState->wifiOffActive = true;
+    appState->wifiOffUntil = millis() + WIFI_OFF_DEMO_MS;
+    Serial.println("[Demo] WIFI:0 - se ngat WiFi 60s, van chay cuc bo + dem ring");
   } else {
     accepted = false;
   }
@@ -233,6 +241,16 @@ void beginNetworkService(AppState& state) {
 void updateNetworkService(AppState& state, unsigned long now) {
   handleWifiDemoButton(state, now);
   handleSerialNetworkCommand(state);
+  // WIFI:0 chi hen gio trong callback (ACK phai gui truoc); ngat/noi lai that su o day.
+  if (state.wifiOffActive) {
+    if (now >= state.wifiOffUntil) {
+      state.wifiOffActive = false;
+      setDemoWifiOffline(false, state);
+      Serial.println("[Demo] Het 60s offline, dang noi lai WiFi");
+    } else if (!demoWifiForcedOffline) {
+      setDemoWifiOffline(true, state);
+    }
+  }
   if (!demoWifiForcedOffline && WiFi.status() != WL_CONNECTED && now - state.lastWifiAttempt >= WIFI_RETRY_MS) {
     state.lastWifiAttempt = now;
     WiFi.reconnect();
