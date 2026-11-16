@@ -14,7 +14,7 @@ MixiPlan là mô hình tưới thông minh dùng độ ẩm đất và dự báo
 | **2B – Networking & Edge**: LoRa/LoRaWAN, gateway, đệm offline và đồng bộ | ESP32 có Wi‑Fi reconnect, Open‑Meteo, MQTT publish/subscribe; **ring buffer 120 gói compact trên ESP32 + tự flush khi MQTT nối lại (xấp xỉ 5 phút)**; gateway FastAPI nhận MQTT, bung gói backfill, lưu SQLite, webhook có token, ACK lệnh. Đặc tả gói tin gọn ~103 byte (mục 9) vừa 1 frame LoRaWAN SF7. | Chưa có radio LoRa/LoRaWAN thật hay gateway LoRa; buffer nằm trên RAM (mất khi deep sleep/mất điện); webhook chưa nối dịch vụ bên ngoài. |
 | **2C – Cloud & Security**: AWS IoT Core/OpenWeatherMap, lưu lịch sử, API an toàn, TLS/JWT/RBAC, dashboard | Dashboard web local đầy đủ: thẻ số liệu, biểu đồ lịch sử, dự báo thời tiết, điều khiển admin, **khối demo đầu vào (ép độ ẩm/mưa)**, nhãn nguồn mô phỏng, giữ số đo cuối và đánh dấu rõ khi dữ liệu cũ. SQLite có index thời gian + prune 7 ngày; JWT 8 giờ, RBAC admin/viewer, webhook token, ACK lệnh, cấu hình MQTT TLS tùy chọn. | Chưa deploy AWS IoT Core, chưa chứng chỉ/broker riêng, chưa OpenWeatherMap (đang Open‑Meteo), chưa HTTPS/reverse proxy. Public HiveMQ không an toàn cho thiết bị thật. |
 
-**Phạm vi hiện tại:** firmware, gateway và dashboard đã có mã nguồn trong repo; firmware đã build `[SUCCESS]` (RAM 15.8%, Flash 39.1% với `huge_app.csv`). Việc này không đồng nghĩa đã chạy E2E trên Wokwi hay đã triển khai cloud. Các mục LoRa, AWS, TLS thực tế và đo điện năng vẫn cần phần cứng, tài khoản/chứng thư và kết quả chạy để xác nhận.
+**Phạm vi hiện tại:** firmware, gateway và dashboard đã có mã nguồn trong repo; firmware đã build `[SUCCESS]` (RAM 16.1%, Flash 39.2% với `huge_app.csv`). Việc này không đồng nghĩa đã chạy E2E trên Wokwi hay đã triển khai cloud. Các mục LoRa, AWS, TLS thực tế và đo điện năng vẫn cần phần cứng, tài khoản/chứng thư và kết quả chạy để xác nhận.
 
 ## 3. Mô hình Wokwi hiện tại
 
@@ -23,6 +23,7 @@ MixiPlan là mô hình tưới thông minh dùng độ ẩm đất và dự báo
 | Bộ điều khiển | ESP32 DevKit | — | Đọc ADC, ra quyết định, Wi‑Fi/MQTT |
 | Độ ẩm đất | Núm `1. DO AM DAT` | GPIO34 | Điều chỉnh giá trị độ ẩm |
 | Mưa | Núm `2. MUA` và nút `5 NHAN = TROI MUA` | GPIO35, GPIO27 | Tạo tín hiệu mưa để thử thuật toán |
+| Demo mất Wi‑Fi | Nút đỏ `BAM = DOI WIFI` | GPIO33 | Ngắt/nối lại Wi‑Fi ngay trên mạch, không cần dashboard |
 | Bơm | Relay `RELAY BOM` + đèn báo | GPIO26 | Đèn sáng nghĩa là đầu ra bơm đang bật |
 | Van tưới | Relay `RELAY VAN` + đèn báo | GPIO25 | Đèn sáng nghĩa là đầu ra van đang mở; van 12V chỉ được mô phỏng |
 | Hiển thị chính | LCD1602 I²C, địa chỉ 0x27 | SDA 21, SCL 22 | Hiển thị cố định độ ẩm, mưa, bơm và van |
@@ -38,15 +39,20 @@ Demo tập trung vào độ ẩm đất và thời tiết đúng với logic tư
 4. ESP32 lấy xác suất mưa giờ hiện tại từ Open‑Meteo mỗi 10 phút; **khi chưa có dữ liệu hợp lệ, thử lại mỗi 30 giây** thay vì chờ 10 phút. Forecast cũ hơn 15 phút bị đánh dấu hết hạn và không cản quyết định cục bộ.
 5. Nếu đất dưới 15%, bật tưới sinh tồn bất kể dự báo mưa; chu kỳ demo 30 giây bật, 3 phút nghỉ.
 6. Nếu đất dưới 40% và không mưa lớn, tưới theo xung 2 phút bật, 3 phút nghỉ. Mưa từ 70% trở lên hoãn chu kỳ thường. Đất đạt 65% thì dừng.
-7. Lệnh MQTT `ON`, `OFF`, `AUTO`, `SOIL:x`, `RAIN:x` có ACK. Trạng thái gửi định kỳ 2,5 giây/lần dưới dạng JSON lên topic telemetry.
+7. Lệnh MQTT `ON`, `OFF`, `AUTO`, `SOIL:x`, `RAIN:x`, `WIFI:0` có ACK. Trạng thái gửi định kỳ 2,5 giây/lần dưới dạng JSON lên topic telemetry.
 8. **Khi mất MQTT**: mỗi lần publish 2,5 giây bị hụt được nén thành gói compact (~103 byte) đưa vào ring buffer 120 ô; khi nối lại, flush toàn bộ theo thứ tự thời gian (mục 9).
 9. Khi mất Wi‑Fi/API, chương trình tiếp tục đọc cảm biến và điều khiển tại ESP32; MQTT/Wi‑Fi tự thử lại với backoff 5→60 giây.
+10. **Demo mất Wi‑Fi có kiểm soát** — 3 cách dùng chung một cơ chế ngắt/nối (`setDemoWifiOffline`):
+    - Lệnh `WIFI:0` từ dashboard: ACK gửi trước, vòng lặp kế tiếp mới ngắt Wi‑Fi + MQTT; **tự nối lại sau 60 giây** (`WIFI_OFF_DEMO_MS`). Trong cửa sổ offline, thiết bị vẫn đọc cảm biến, tưới cục bộ và đệm ring buffer.
+    - Nút đỏ GPIO33 trên mạch: nhấn để ngắt, nhấn lần nữa để nối lại ngay (debounce 250 ms).
+    - Serial Monitor: gõ `OFFLINE` / `ONLINE`.
+    Thao tác tay (nút/Serial) hủy cửa sổ 60 giây của `WIFI:0` đang chạy để không nối lại ngoài ý muốn.
 
 ## 5. Gateway, webhook và dashboard local
 
-Thư mục `gateway/` chứa API FastAPI và trang web tĩnh. Gateway subscribe telemetry/ACK MQTT (QoS 1) và ghi SQLite; **gói backfill `bf=1` được `expand_backfill()` bung về schema đầy đủ** kèm `backfill=true` và `device_time_ms`. Endpoint `/api/webhooks/telemetry` nhận JSON khi có `X-Webhook-Token`; đăng nhập tạo JWT 8 giờ; viewer chỉ đọc, admin mới được gửi lệnh. Lệnh gắn ID, lưu `queued`, cập nhật `acknowledged/rejected` khi nhận ACK. Lệnh `SOIL:/RAIN:` bị chặn ngoài khoảng −1..100 (HTTP 422). SQLite có index theo `received_at`/`created_at` và **prune dữ liệu cũ hơn 7 ngày** khi khởi động.
+Thư mục `gateway/` chứa API FastAPI và trang web tĩnh. Gateway subscribe telemetry/ACK MQTT (QoS 1) và ghi SQLite; **gói backfill `bf=1` được `expand_backfill()` bung về schema đầy đủ** kèm `backfill=true` và `device_time_ms`. Endpoint `/api/webhooks/telemetry` nhận JSON khi có `X-Webhook-Token`; đăng nhập tạo JWT 8 giờ; viewer chỉ đọc, admin mới được gửi lệnh. Lệnh gắn ID, lưu `queued`, cập nhật `acknowledged/rejected` khi nhận ACK. Lệnh `SOIL:/RAIN:` bị chặn ngoài khoảng −1..100 (HTTP 422); `WIFI:0` là lệnh Wi‑Fi duy nhất được nhận (không có `WIFI:1` — khi mất Wi‑Fi thật, lệnh MQTT không tới được thiết bị, nên phải tự nối lại theo hẹn giờ). SQLite có index theo `received_at`/`created_at` và **prune dữ liệu cũ hơn 7 ngày** khi khởi động.
 
-Dashboard gồm: 4 thẻ chính (độ ẩm đất, mưa hiệu lực, bơm, MQTT) + 3 thẻ mở rộng (**ADC đất sau lọc, nhiệt độ/độ ẩm không khí**); biểu đồ lịch sử; dự báo hiện tại/8 giờ/3 ngày cho trung tâm TP.HCM (cache 10 phút); khối điều khiển ON/OFF/AUTO; **khối "Demo đầu vào" chỉ admin**: 2 thanh trượt độ ẩm/mưa, nút **Áp dụng** (gửi `SOIL:x` + `RAIN:x`), nút **Trả về mạch** (gửi `SOIL:-1` + `RAIN:-1`), badge "Đất/Mưa đang ép" đọc từ telemetry. Telemetry Wokwi được gắn nhãn mô phỏng; khi quá 20 giây không có bản tin mới, dashboard vẫn giữ số đo cuối nhưng tô cảnh báo và ghi rõ ESP32 offline, không coi đó là số trực tiếp.
+Dashboard gồm: 4 thẻ chính (độ ẩm đất, mưa hiệu lực, bơm, MQTT) + 3 thẻ mở rộng (**ADC đất sau lọc, nhiệt độ/độ ẩm không khí**); biểu đồ lịch sử; dự báo hiện tại/8 giờ/3 ngày cho trung tâm TP.HCM (cache 10 phút); khối điều khiển ON/OFF/AUTO; **khối "Demo đầu vào" chỉ admin**: 2 thanh trượt độ ẩm/mưa, nút **Áp dụng** (gửi `SOIL:x` + `RAIN:x`), nút **Trả về mạch** (gửi `SOIL:-1` + `RAIN:-1`), **4 nút kịch bản dựng sẵn** (Đất khô 30%, Khô nguy cấp 10%, Mưa to 80%, Đủ ẩm 70% — mỗi nút gửi cặp `SOIL:x` + `RAIN:x` tương ứng), nút đỏ **Mất WiFi 60 giây** (gửi `WIFI:0`), badge "Đất/Mưa đang ép" đọc từ telemetry. Telemetry Wokwi được gắn nhãn mô phỏng; khi quá 20 giây không có bản tin mới, dashboard vẫn giữ số đo cuối nhưng tô cảnh báo và ghi rõ ESP32 offline, không coi đó là số trực tiếp.
 
 Từ terminal CMD ở thư mục gốc project, chạy `gateway\run.bat`; lần đầu script tự tạo môi trường Python và cài dependencies. Mở `http://127.0.0.1:8000`. Gateway cần Internet để kết nối broker. Broker công cộng chỉ dùng demo; API local không được phơi ra Internet nếu chưa có HTTPS/reverse proxy.
 
@@ -62,7 +68,7 @@ Webhook phù hợp để nhận telemetry từ nền tảng ngoài; firmware hi�
 | `src/Sensors.cpp` | Trimmed mean 10 mẫu + EMA, quy đổi độ ẩm, đọc mưa và nút báo mưa. |
 | `src/IrrigationController.cpp` | AUTO/MANUAL, mưa lớn, tưới sinh tồn, tưới theo xung, trễ chuyển mạch 10 giây. |
 | `src/WeatherService.cpp` | Open‑Meteo, xác suất mưa giờ hiện tại, retry 30 giây khi chưa hợp lệ, hết hạn forecast. |
-| `src/NetworkService.cpp` | Wi‑Fi/MQTT reconnect, nhận lệnh + ACK, telemetry JSON, gói compact, ring buffer, flush đồng bộ. |
+| `src/NetworkService.cpp` | Wi‑Fi/MQTT reconnect, nhận lệnh + ACK, telemetry JSON, gói compact, ring buffer, flush đồng bộ, demo mất Wi‑Fi (lệnh `WIFI:0`, nút GPIO33, Serial OFFLINE/ONLINE). |
 | `src/Display.cpp` | Khởi tạo và cập nhật 2 LCD/Serial Monitor. |
 | `src/PowerManager.cpp` | Deep sleep có điều kiện; mặc định tắt, chỉ cho phần cứng thật và AUTO khi đất đủ ẩm. |
 | `gateway/app.py`, `gateway/static/index.html` | API, SQLite, JWT/RBAC, MQTT, backfill, webhook, dashboard + khối demo. |
@@ -225,6 +231,8 @@ Các núm/nút: **1** độ ẩm đất, **2** mưa, **3** nhấn báo mưa. LCD
 7. **Demo từ dashboard (mới):** đăng nhập admin, kéo thanh độ ẩm về 20%, mưa 0%, bấm **Áp dụng** → Serial in `[Test] Ep do am=20%`, badge "Đất đang ép" hiện, bơm chạy dù núm mạch đang 70%. Vặn núm mạch lệch > 5% → override hủy ngay. Bấm **Trả về mạch** → thiết bị đọc lại từ núm.
 8. **Backfill (mới):** để thiết bị chạy, ngắt mạng simulator ~1 phút rồi bật lại → Serial in `[Sync] Dong bo lai N goi tin da dem`; dashboard/API history có các bản ghi `backfill=true`.
 9. **Viewer bị chặn (mới):** đăng nhập viewer → nút điều khiển và khối demo bị disabled; gọi thẳng API command bị 403.
+10. **Kịch bản dựng sẵn (mới):** admin bấm lần lượt **Đất khô 30%** → bơm chạy xung; **Mưa to 80%** → chu kỳ thường hoãn; **Khô nguy cấp 10%** → tưới sinh tồn bất kể mưa; **Đủ ẩm 70%** → bơm tắt. Mỗi nút tự kéo thanh trượt và gửi cặp lệnh, badge hiện đúng giá trị ép.
+11. **Mất Wi‑Fi 60 giây (mới):** admin bấm **Mất WiFi 60 giây** → Serial in `[Demo] WIFI:0...` rồi `[Demo] Wi-Fi ngat...`; LCD/relay vẫn đổi theo cảm biến, telemetry hụt bị đệm ring; dashboard giữ số cuối + tô cảnh báo stale. Sau 60 giây tự nối lại, `[Sync] Dong bo lai N goi tin da dem` và biểu đồ nhận điểm backfill. Có thể thay bằng nút đỏ GPIO33 trên mạch hoặc gõ `OFFLINE`/`ONLINE` trong Serial.
 
 Chu kỳ dài có thể tạm giảm `NORMAL_PULSE_MS`, `SURVIVAL_PULSE_MS`, `PULSE_REST_MS` để demo nhanh rồi khôi phục. **Sau mỗi lần sửa code phải Build lại PlatformIO rồi Restart Wokwi** — simulator chỉ đọc `firmware.bin` đã build.
 
@@ -242,7 +250,7 @@ Chu kỳ dài có thể tạm giảm `NORMAL_PULSE_MS`, `SURVIVAL_PULSE_MS`, `PU
 ## 14. Cách build và mở mô phỏng
 
 1. Mở đúng thư mục `MixiPlan` trong VS Code.
-2. **PlatformIO: Build**; chỉ tiếp tục khi Terminal hiện `[SUCCESS]` (lần gần nhất: RAM 15.8%, Flash 39.1%).
+2. **PlatformIO: Build**; chỉ tiếp tục khi Terminal hiện `[SUCCESS]` (lần gần nhất: RAM 16.1%, Flash 39.2%).
 3. **Wokwi: Start Simulator** từ `diagram.json`; nếu đang chạy bản cũ thì Restart để nạp firmware mới.
 4. Serial Monitor `115200`. Wokwi báo license expired là vấn đề license simulator, không phải lỗi firmware.
 5. Gateway: `gateway\run.bat` từ CMD ở thư mục gốc, mở `http://127.0.0.1:8000`, mật khẩu trong `gateway/.env`.
