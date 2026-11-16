@@ -72,7 +72,7 @@ constexpr unsigned long PUMP_MIN_SWITCH_MS = 10000UL;
 constexpr unsigned long RAIN_TEST_TIMEOUT_MS = 120000UL;
 constexpr unsigned long SOIL_TEST_TIMEOUT_MS = 120000UL;
 // Cua so offline chu dong theo lenh WIFI:0 (demo mat mang co kiem soat).
-constexpr unsigned long WIFI_OFF_DEMO_MS = 60000UL;
+constexpr unsigned long WIFI_OFF_DEMO_MS = 30000UL;
 // Vuot num tren mach lech qua muc nay thi huy override tu dashboard.
 constexpr int POT_OVERRIDE_CANCEL_DELTA = 5;
 constexpr unsigned long WEATHER_RETRY_INVALID_MS = 30000UL;
@@ -80,6 +80,7 @@ constexpr size_t TELEMETRY_RING_CAPACITY = 120;
 constexpr unsigned long NORMAL_PULSE_MS = 120000UL;
 constexpr unsigned long SURVIVAL_PULSE_MS = 30000UL;
 constexpr unsigned long PULSE_REST_MS = 180000UL;
+constexpr unsigned long SURVIVAL_REST_MS = 10000UL;
 
 constexpr unsigned long WIFI_RETRY_MS = 10000UL;
 constexpr unsigned long MQTT_RETRY_MIN_MS = 5000UL;

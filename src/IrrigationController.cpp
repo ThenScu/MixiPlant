@@ -46,7 +46,7 @@ bool updateIrrigationDecision(AppState& state, unsigned long now) {
     if (state.irrigationCycle) {
       const unsigned long phaseDuration = state.pulseIsOn
           ? (survival ? SURVIVAL_PULSE_MS : NORMAL_PULSE_MS)
-          : PULSE_REST_MS;
+          : (survival ? SURVIVAL_REST_MS : PULSE_REST_MS);
       // Count ON time only while the pump is physically commanded ON, and
       // count rest time only after it has actually switched OFF.
       if (state.pumpActive == state.pulseIsOn) {

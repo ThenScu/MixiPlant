@@ -43,16 +43,16 @@ Demo tập trung vào độ ẩm đất và thời tiết đúng với logic tư
 8. **Khi mất MQTT**: mỗi lần publish 2,5 giây bị hụt được nén thành gói compact (~103 byte) đưa vào ring buffer 120 ô; khi nối lại, flush toàn bộ theo thứ tự thời gian (mục 9).
 9. Khi mất Wi‑Fi/API, chương trình tiếp tục đọc cảm biến và điều khiển tại ESP32; MQTT/Wi‑Fi tự thử lại với backoff 5→60 giây.
 10. **Demo mất Wi‑Fi có kiểm soát** — 3 cách dùng chung một cơ chế ngắt/nối (`setDemoWifiOffline`):
-    - Lệnh `WIFI:0` từ dashboard: ACK gửi trước, vòng lặp kế tiếp mới ngắt Wi‑Fi + MQTT; **tự nối lại sau 60 giây** (`WIFI_OFF_DEMO_MS`). Trong cửa sổ offline, thiết bị vẫn đọc cảm biến, tưới cục bộ và đệm ring buffer.
+    - Nút riêng `WIFI:0` từ dashboard: ACK gửi trước, vòng lặp kế tiếp mới ngắt Wi‑Fi + MQTT; **tự nối lại sau 30 giây** (`WIFI_OFF_DEMO_MS`). Không cần bấm Áp dụng đầu vào demo. Trong cửa sổ offline, thiết bị vẫn đọc cảm biến, tưới cục bộ và đệm ring buffer.
     - Nút đỏ GPIO33 trên mạch: nhấn để ngắt, nhấn lần nữa để nối lại ngay (debounce 250 ms).
     - Serial Monitor: gõ `OFFLINE` / `ONLINE`.
-    Thao tác tay (nút/Serial) hủy cửa sổ 60 giây của `WIFI:0` đang chạy để không nối lại ngoài ý muốn.
+    Thao tác tay (nút/Serial) hủy cửa sổ 30 giây của `WIFI:0` đang chạy để không nối lại ngoài ý muốn.
 
 ## 5. Gateway, webhook và dashboard local
 
 Thư mục `gateway/` chứa API FastAPI và trang web tĩnh. Gateway subscribe telemetry/ACK MQTT (QoS 1) và ghi SQLite; **gói backfill `bf=1` được `expand_backfill()` bung về schema đầy đủ** kèm `backfill=true` và `device_time_ms`. Endpoint `/api/webhooks/telemetry` nhận JSON khi có `X-Webhook-Token`; đăng nhập tạo JWT 8 giờ; viewer chỉ đọc, admin mới được gửi lệnh. Lệnh gắn ID, lưu `queued`, cập nhật `acknowledged/rejected` khi nhận ACK. Lệnh `SOIL:/RAIN:` bị chặn ngoài khoảng −1..100 (HTTP 422); `WIFI:0` là lệnh Wi‑Fi duy nhất được nhận (không có `WIFI:1` — khi mất Wi‑Fi thật, lệnh MQTT không tới được thiết bị, nên phải tự nối lại theo hẹn giờ). SQLite có index theo `received_at`/`created_at` và **prune dữ liệu cũ hơn 7 ngày** khi khởi động.
 
-Dashboard gồm: 4 thẻ chính (độ ẩm đất, mưa hiệu lực, bơm, MQTT) + 3 thẻ mở rộng (**ADC đất sau lọc, nhiệt độ/độ ẩm không khí**); biểu đồ lịch sử; dự báo hiện tại/8 giờ/3 ngày cho trung tâm TP.HCM (cache 10 phút); khối điều khiển ON/OFF/AUTO; **khối "Demo đầu vào" chỉ admin**: 2 thanh trượt độ ẩm/mưa, nút **Áp dụng** (gửi `SOIL:x` + `RAIN:x`), nút **Trả về mạch** (gửi `SOIL:-1` + `RAIN:-1`), **4 nút kịch bản dựng sẵn** (Đất khô 30%, Khô nguy cấp 10%, Mưa to 80%, Đủ ẩm 70% — mỗi nút gửi cặp `SOIL:x` + `RAIN:x` tương ứng), nút đỏ **Mất WiFi 60 giây** (gửi `WIFI:0`), badge "Đất/Mưa đang ép" đọc từ telemetry. Telemetry Wokwi được gắn nhãn mô phỏng; khi quá 20 giây không có bản tin mới, dashboard vẫn giữ số đo cuối nhưng tô cảnh báo và ghi rõ ESP32 offline, không coi đó là số trực tiếp.
+Dashboard gồm: 4 thẻ chính (độ ẩm đất, mưa hiệu lực, bơm, MQTT) + 3 thẻ mở rộng (**ADC đất sau lọc, nhiệt độ/độ ẩm không khí**); biểu đồ lịch sử; dự báo hiện tại/8 giờ/3 ngày cho trung tâm TP.HCM (cache 10 phút); khối điều khiển ON/OFF/AUTO; **khối "Demo đầu vào" chỉ admin**: 2 thanh trượt độ ẩm/mưa, nút **Áp dụng** (gửi `SOIL:x` + `RAIN:x`), nút **Trả về mạch** (gửi `SOIL:-1` + `RAIN:-1`), **4 nút kịch bản dựng sẵn** (Đất khô 30%, Khô nguy cấp 10%, Mưa to 80%, Đủ ẩm 70% — mỗi nút gửi cặp `SOIL:x` + `RAIN:x` tương ứng), nút riêng **Ngắt WiFi 30 giây** (gửi ngay `WIFI:0`, độc lập với Áp dụng), badge "Đất/Mưa đang ép" đọc từ telemetry. Telemetry Wokwi được gắn nhãn mô phỏng; khi quá 20 giây không có bản tin mới, dashboard vẫn giữ số đo cuối nhưng tô cảnh báo và ghi rõ ESP32 offline, không coi đó là số trực tiếp.
 
 Từ terminal CMD ở thư mục gốc project, chạy `gateway\run.bat`; lần đầu script tự tạo môi trường Python và cài dependencies. Mở `http://127.0.0.1:8000`. Gateway cần Internet để kết nối broker. Broker công cộng chỉ dùng demo; API local không được phơi ra Internet nếu chưa có HTTPS/reverse proxy.
 
@@ -232,7 +232,7 @@ Các núm/nút: **1** độ ẩm đất, **2** mưa, **3** nhấn báo mưa. LCD
 8. **Backfill (mới):** để thiết bị chạy, ngắt mạng simulator ~1 phút rồi bật lại → Serial in `[Sync] Dong bo lai N goi tin da dem`; dashboard/API history có các bản ghi `backfill=true`.
 9. **Viewer bị chặn (mới):** đăng nhập viewer → nút điều khiển và khối demo bị disabled; gọi thẳng API command bị 403.
 10. **Kịch bản dựng sẵn (mới):** admin bấm lần lượt **Đất khô 30%** → bơm chạy xung; **Mưa to 80%** → chu kỳ thường hoãn; **Khô nguy cấp 10%** → tưới sinh tồn bất kể mưa; **Đủ ẩm 70%** → bơm tắt. Mỗi nút tự kéo thanh trượt và gửi cặp lệnh, badge hiện đúng giá trị ép.
-11. **Mất Wi‑Fi 60 giây (mới):** admin bấm **Mất WiFi 60 giây** → Serial in `[Demo] WIFI:0...` rồi `[Demo] Wi-Fi ngat...`; LCD/relay vẫn đổi theo cảm biến, telemetry hụt bị đệm ring; dashboard giữ số cuối + tô cảnh báo stale. Sau 60 giây tự nối lại, `[Sync] Dong bo lai N goi tin da dem` và biểu đồ nhận điểm backfill. Có thể thay bằng nút đỏ GPIO33 trên mạch hoặc gõ `OFFLINE`/`ONLINE` trong Serial.
+11. **Mất Wi‑Fi 30 giây:** admin bấm nút riêng **Ngắt WiFi 30 giây** (không cần bấm Áp dụng) → Serial in `[Demo] WIFI:0...` rồi `[Demo] Wi-Fi ngat...`; LCD/relay vẫn đổi theo cảm biến, telemetry hụt bị đệm ring; dashboard giữ số cuối + tô cảnh báo stale. Sau 30 giây tự nối lại, `[Sync] Dong bo lai N goi tin da dem` và biểu đồ nhận điểm backfill. Có thể thay bằng nút đỏ GPIO33 trên mạch hoặc gõ `OFFLINE`/`ONLINE` trong Serial.
 
 Chu kỳ dài có thể tạm giảm `NORMAL_PULSE_MS`, `SURVIVAL_PULSE_MS`, `PULSE_REST_MS` để demo nhanh rồi khôi phục. **Sau mỗi lần sửa code phải Build lại PlatformIO rồi Restart Wokwi** — simulator chỉ đọc `firmware.bin` đã build.
 

@@ -190,7 +190,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   } else if (requestedState == "WIFI:0") {
     appState->wifiOffActive = true;
     appState->wifiOffUntil = millis() + WIFI_OFF_DEMO_MS;
-    Serial.println("[Demo] WIFI:0 - se ngat WiFi 60s, van chay cuc bo + dem ring");
+    Serial.println("[Demo] WIFI:0 - se ngat WiFi 30s, van chay cuc bo + dem ring");
   } else {
     accepted = false;
   }
@@ -246,7 +246,7 @@ void updateNetworkService(AppState& state, unsigned long now) {
     if (now >= state.wifiOffUntil) {
       state.wifiOffActive = false;
       setDemoWifiOffline(false, state);
-      Serial.println("[Demo] Het 60s offline, dang noi lai WiFi");
+      Serial.println("[Demo] Het 30s offline, dang noi lai WiFi");
     } else if (!demoWifiForcedOffline) {
       setDemoWifiOffline(true, state);
     }
