@@ -41,6 +41,7 @@
 constexpr uint8_t SOIL_PIN = 34;
 constexpr uint8_t RAIN_AO_PIN = 35;
 constexpr uint8_t RAIN_DO_PIN = 27;
+constexpr uint8_t WIFI_DEMO_BUTTON_PIN = 33;
 constexpr uint8_t RELAY_PIN = 26;
 constexpr uint8_t VALVE_RELAY_PIN = 25;
 constexpr uint8_t LCD_SDA_PIN = 21;
@@ -53,10 +54,10 @@ constexpr int SOIL_RAW_WET = 4095;
 // Ghi nhãn dữ liệu để dashboard không nhầm tín hiệu Wokwi với cảm biến thật.
 constexpr bool IS_WOKWI_SIMULATION = true;
 // Bat ON cho Wokwi; tat khi dung cam bien dat that de lay so do truc tiep.
-constexpr bool SIMULATE_SOIL_RESPONSE = true;
+constexpr bool SIMULATE_SOIL_RESPONSE = false;
 // Deep Sleep danh cho ban phan cung: mac dinh tat de simulator/MQTT van cap nhat lien tuc.
-constexpr bool ENABLE_LOW_POWER_DEEP_SLEEP = false;
-constexpr unsigned long LOW_POWER_WAKE_INTERVAL_MS = 300000UL;
+constexpr bool ENABLE_LOW_POWER_DEEP_SLEEP = true;
+constexpr unsigned long LOW_POWER_WAKE_INTERVAL_MS = 30000UL;
 
 // Nguong dieu khien demo. 40% la nguong kho bat dau chu ky, 65% la nguong dung.
 constexpr int CRITICAL_LOW = 15;
