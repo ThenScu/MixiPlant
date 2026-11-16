@@ -243,7 +243,7 @@ class LoginRequest(BaseModel):
 
 
 class CommandRequest(BaseModel):
-    state: str = Field(pattern=r"^(ON|OFF|AUTO|(SOIL|RAIN):-?\d{1,3})$")
+    state: str = Field(pattern=r"^(ON|OFF|AUTO|(SOIL|RAIN):-?\d{1,3}|WIFI:0)$")
 
 
 def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> dict[str, str]:
