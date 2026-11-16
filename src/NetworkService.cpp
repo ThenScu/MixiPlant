@@ -18,6 +18,54 @@ WiFiClient wifiClient;
 #endif
 PubSubClient mqtt(wifiClient);
 AppState* appState = nullptr;
+bool demoWifiForcedOffline = false;
+String serialCommand;
+bool wifiDemoButtonWasHigh = true;
+unsigned long lastWifiDemoButtonPress = 0;
+
+void setDemoWifiOffline(bool offline, AppState& state) {
+  if (offline == demoWifiForcedOffline) return;
+  demoWifiForcedOffline = offline;
+  if (offline) {
+    mqtt.disconnect();
+    WiFi.disconnect(true, false);
+    state.mqttOnline = false;
+    Serial.println("[Demo] Wi-Fi ngat; ESP32 van xu ly cam bien tai cho.");
+  } else {
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    state.lastWifiAttempt = millis();
+    Serial.println("[Demo] Dang ket noi lai Wi-Fi; MQTT se tu ket noi lai.");
+  }
+}
+
+void handleWifiDemoButton(AppState& state, unsigned long now) {
+  const bool buttonIsHigh = digitalRead(WIFI_DEMO_BUTTON_PIN) == HIGH;
+  if (wifiDemoButtonWasHigh && !buttonIsHigh &&
+      now - lastWifiDemoButtonPress >= 250UL) {
+    lastWifiDemoButtonPress = now;
+    setDemoWifiOffline(!demoWifiForcedOffline, state);
+  }
+  wifiDemoButtonWasHigh = buttonIsHigh;
+}
+
+void handleSerialNetworkCommand(AppState& state) {
+  while (Serial.available() > 0) {
+    const char ch = static_cast<char>(Serial.read());
+    if (ch != '\r' && ch != '\n') {
+      serialCommand += ch;
+      continue;
+    }
+    serialCommand.trim();
+    serialCommand.toUpperCase();
+    if (serialCommand == "OFFLINE") setDemoWifiOffline(true, state);
+    else if (serialCommand == "ONLINE") setDemoWifiOffline(false, state);
+    else if (!serialCommand.isEmpty()) Serial.println("[Demo] Go OFFLINE hoac ONLINE.");
+    serialCommand = "";
+  }
+}
+
 
 // Goi tin gon cho ring buffer / LoRa: key ngan, bo truong lap (2B.1).
 String compactTelemetry(const AppState& s, unsigned long now) {
@@ -150,6 +198,9 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 void beginNetworkService(AppState& state) {
   appState = &state;
+  pinMode(WIFI_DEMO_BUTTON_PIN, INPUT_PULLUP);
+  wifiDemoButtonWasHigh = digitalRead(WIFI_DEMO_BUTTON_PIN) == HIGH;
+  Serial.println("[Demo] Bam nut WIFI de ngat/ket noi lai.");
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -179,13 +230,15 @@ void beginNetworkService(AppState& state) {
 }
 
 void updateNetworkService(AppState& state, unsigned long now) {
-  if (WiFi.status() != WL_CONNECTED && now - state.lastWifiAttempt >= WIFI_RETRY_MS) {
+  handleWifiDemoButton(state, now);
+  handleSerialNetworkCommand(state);
+  if (!demoWifiForcedOffline && WiFi.status() != WL_CONNECTED && now - state.lastWifiAttempt >= WIFI_RETRY_MS) {
     state.lastWifiAttempt = now;
     WiFi.reconnect();
     Serial.println("[WiFi] Mat ket noi, dang thu lai");
   }
 
-  if (!mqtt.connected() && WiFi.status() == WL_CONNECTED &&
+  if (!demoWifiForcedOffline && !mqtt.connected() && WiFi.status() == WL_CONNECTED &&
       now - state.lastMqttAttempt >= state.mqttRetryDelay) {
     state.lastMqttAttempt = now;
     const String clientId = "ESP32-MixiPlan-" + String((uint32_t)ESP.getEfuseMac(), HEX);

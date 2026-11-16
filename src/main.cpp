@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_sleep.h>
 
 #include "AppState.h"
 #include "Config.h"
@@ -71,6 +72,12 @@ void applyActuators() {
 
 void setup() {
   Serial.begin(115200);
+  const esp_sleep_wakeup_cause_t wakeCause = esp_sleep_get_wakeup_cause();
+  if (wakeCause == ESP_SLEEP_WAKEUP_TIMER) {
+    Serial.println("[Power] Thuc day tu Deep Sleep bang timer.");
+  } else {
+    Serial.println("[Power] Khoi dong nguon binh thuong.");
+  }
 
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(VALVE_RELAY_PIN, OUTPUT);
