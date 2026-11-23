@@ -10,7 +10,7 @@ MixiPlan là mô hình tưới thông minh dùng độ ẩm đất và dự báo
 
 | Nhóm yêu cầu | Hiện trạng trong project | Việc còn lại |
 |---|---|---|
-| **2A – Hardware & Embedded**: ESP32, cảm biến, relay/van, lọc và hiệu chuẩn, quyết định tưới | Firmware lọc 2 lớp: trimmed mean 10 mẫu ADC + EMA α=0.3; mốc hiệu chuẩn; ngưỡng bật 40%, dừng 65%, sinh tồn 15%; tưới xung 2 phút/nghỉ 3 phút; relay bơm/van. Demo Deep Sleep được gọi bằng lệnh `SLEEP`, chỉ nhận khi bơm đang tắt; ESP32 gửi thêm telemetry, ngủ theo thời gian timer cấu hình trong firmware rồi tự khởi động và kết nối lại. Có sơ đồ mạch đề xuất với lọc RC + diode flyback (`docs/so_do_mach_loc_va_bao_ve.svg`) và bảng tính pin mục 8. | Chưa đo/hiệu chuẩn cảm biến thật, chưa xác nhận ngưỡng theo cây/đất, dòng relay, thử lỗi cảm biến hay kiểm chứng tiêu thụ điện. Số liệu pin là ước lượng có giả định, chưa đo. NPK/EC không nằm trong demo vì chưa có đầu dò thật. |
+| **2A – Hardware & Embedded**: ESP32, cảm biến, relay/van, lọc và hiệu chuẩn, quyết định tưới | Firmware lọc 2 lớp: trimmed mean 10 mẫu ADC + EMA α=0.3; mốc hiệu chuẩn; ngưỡng khô 40%, mục tiêu dừng 65%, sinh tồn 15%. Khi dưới ngưỡng sinh tồn, bơm chạy liên tục đến mục tiêu; đất khô thường tưới 2 phút, nghỉ 3 phút theo từng nhịp. Demo Deep Sleep được gọi bằng lệnh `SLEEP`, chỉ nhận khi bơm đang tắt; ESP32 gửi thêm telemetry, ngủ theo thời gian timer cấu hình trong firmware rồi tự khởi động và kết nối lại. Có sơ đồ mạch đề xuất với lọc RC + diode flyback (`docs/so_do_mach_loc_va_bao_ve.svg`) và bảng tính pin mục 8. | Chưa đo/hiệu chuẩn cảm biến thật, chưa xác nhận ngưỡng theo cây/đất, dòng relay, thử lỗi cảm biến hay kiểm chứng tiêu thụ điện. Số liệu pin là ước lượng có giả định, chưa đo. NPK/EC không nằm trong demo vì chưa có đầu dò thật. |
 | **2B – Networking & Edge**: LoRa/LoRaWAN, gateway, đệm offline và đồng bộ | ESP32 có Wi‑Fi reconnect, Open‑Meteo, MQTT publish/subscribe; **ring buffer 120 gói compact trên ESP32 + tự flush khi MQTT nối lại (xấp xỉ 5 phút)**; gateway FastAPI nhận MQTT, bung gói backfill, lưu SQLite, webhook có token, ACK lệnh. Đặc tả gói tin gọn ~103 byte (mục 9) vừa 1 frame LoRaWAN SF7. | Chưa có radio LoRa/LoRaWAN thật hay gateway LoRa; buffer nằm trên RAM (mất khi deep sleep/mất điện); webhook chưa nối dịch vụ bên ngoài. |
 | **2C – Cloud & Security**: AWS IoT Core/OpenWeatherMap, lưu lịch sử, API an toàn, TLS/JWT/RBAC, dashboard | Dashboard web local đầy đủ: thẻ số liệu, biểu đồ lịch sử, dự báo thời tiết, điều khiển admin, **khối demo đầu vào (ép độ ẩm/mưa)**, nhãn nguồn mô phỏng, giữ số đo cuối và đánh dấu rõ khi dữ liệu cũ. SQLite có index thời gian + prune 7 ngày; JWT 8 giờ, RBAC admin/viewer, webhook token, ACK lệnh, cấu hình MQTT TLS tùy chọn. | Chưa deploy AWS IoT Core, chưa chứng chỉ/broker riêng, chưa OpenWeatherMap (đang Open‑Meteo), chưa HTTPS/reverse proxy. Public HiveMQ không an toàn cho thiết bị thật. |
 
@@ -37,7 +37,7 @@ Demo tập trung vào độ ẩm đất và thời tiết đúng với logic tư
 2. Mỗi vòng lặp lấy 10 mẫu ADC độ ẩm đất và mưa, **trimmed mean** (bỏ 2 mẫu thấp nhất + 2 cao nhất, trung bình 6 mẫu còn lại) rồi **EMA α=0.3** để chống giật. Độ ẩm đổi sang phần trăm từ hai mốc `SOIL_RAW_DRY` và `SOIL_RAW_WET`.
 3. **Override demo từ dashboard**: lệnh `SOIL:x` ép độ ẩm nền, `RAIN:x` ép mưa hiệu lực trong 2 phút. Nếu người dùng vặn núm tương ứng trên mạch lệch quá 5% (`POT_OVERRIDE_CANCEL_DELTA`), override bị hủy ngay — mạch luôn thắng. `SOIL:-1`/`RAIN:-1` hủy sớm.
 4. ESP32 lấy xác suất mưa giờ hiện tại từ Open‑Meteo mỗi 10 phút; **khi chưa có dữ liệu hợp lệ, thử lại mỗi 30 giây** thay vì chờ 10 phút. Forecast cũ hơn 15 phút bị đánh dấu hết hạn và không cản quyết định cục bộ.
-5. Nếu đất dưới 15%, bật tưới sinh tồn bất kể dự báo mưa; chu kỳ demo 30 giây bật, 3 phút nghỉ.
+5. Nếu đất dưới 15%, bật tưới sinh tồn liên tục đến ngưỡng mục tiêu, bất kể dự báo mưa.
 6. Nếu đất dưới 40% và không mưa lớn, tưới theo xung 2 phút bật, 3 phút nghỉ. Mưa từ 70% trở lên hoãn chu kỳ thường. Đất đạt 65% thì dừng.
 7. Lệnh MQTT `ON`, `OFF`, `AUTO`, `SOIL:x`, `RAIN:x`, `WIFI:0` có ACK. Trạng thái gửi định kỳ 2,5 giây/lần dưới dạng JSON lên topic telemetry.
 8. **Khi mất MQTT**: mỗi lần publish 2,5 giây bị hụt được nén thành gói compact (~103 byte) đưa vào ring buffer 120 ô; khi nối lại, flush toàn bộ theo thứ tự thời gian (mục 9).
@@ -225,7 +225,7 @@ Các núm/nút: **1** độ ẩm đất, **2** mưa, **3** nhấn báo mưa. LCD
 1. **Đất đủ ẩm:** `DO AM DAT` ~70% → bơm/van tắt, `DU AM`.
 2. **Đất khô, không mưa:** ~30%, `MUA TEST` thấp, thả nút → tưới xung 2 phút bật/3 phút nghỉ.
 3. **Đất khô, mưa lớn:** ~30%, `MUA TEST` > 70% → hoãn chu kỳ thường.
-4. **Sinh tồn:** < 15% + nhấn `TROI MUA` → vẫn tưới sinh tồn ngắn.
+4. **Sinh tồn:** độ ẩm < 15% → bơm chạy liên tục đến mục tiêu, kể cả khi trời mưa.
 5. **Mất Wi‑Fi/API:** ngắt Internet trong simulator → firmware vẫn quyết định cục bộ, forecast hết hạn không được áp dụng.
 6. **Lệnh tay:** publish `ON/OFF/AUTO` tới topic điều khiển → quan sát relay/LED + ACK trên dashboard.
 7. **Demo từ dashboard (mới):** đăng nhập admin, kéo thanh độ ẩm về 20%, mưa 0%, bấm **Áp dụng** → Serial in `[Test] Ep do am=20%`, badge "Đất đang ép" hiện, bơm chạy dù núm mạch đang 70%. Vặn núm mạch lệch > 5% → override hủy ngay. Bấm **Trả về mạch** → thiết bị đọc lại từ núm.

@@ -73,9 +73,7 @@ constexpr int POT_OVERRIDE_CANCEL_DELTA = 5;
 constexpr unsigned long WEATHER_RETRY_INVALID_MS = 30000UL;
 constexpr size_t TELEMETRY_RING_CAPACITY = 120;
 constexpr unsigned long NORMAL_PULSE_MS = 120000UL;
-constexpr unsigned long SURVIVAL_PULSE_MS = 30000UL;
 constexpr unsigned long PULSE_REST_MS = 180000UL;
-constexpr unsigned long SURVIVAL_REST_MS = 10000UL;
 
 constexpr unsigned long WIFI_RETRY_MS = 10000UL;
 constexpr unsigned long MQTT_RETRY_MIN_MS = 5000UL;

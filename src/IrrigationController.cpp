@@ -9,60 +9,68 @@ bool updateIrrigationDecision(AppState& state, unsigned long now) {
 
   if (state.pumpMode == "MANUAL_ON") {
     state.irrigationCycle = false;
+    state.survivalCycle = false;
     state.pulseIsOn = false;
     state.pulsePhaseStarted = 0;
     wantsPumpOn = true;
     reason = "APP BAT";
   } else if (state.pumpMode == "MANUAL_OFF") {
     state.irrigationCycle = false;
+    state.survivalCycle = false;
     state.pulseIsOn = false;
     state.pulsePhaseStarted = 0;
     wantsPumpOn = false;
     reason = "APP TAT";
   } else if (state.currentMoisture >= TARGET_MOISTURE) {
     state.irrigationCycle = false;
+    state.survivalCycle = false;
     state.pulseIsOn = false;
     state.pulsePhaseStarted = 0;
     wantsPumpOn = false;
     reason = "DU AM";
   } else {
-    const bool survival = state.currentMoisture < CRITICAL_LOW;
+    if (state.currentMoisture < CRITICAL_LOW) state.survivalCycle = true;
     const bool soilIsDry = state.currentMoisture < DRY_THRESHOLD;
 
-    if (!state.irrigationCycle && (survival || (soilIsDry && !heavyRain))) {
+    if (state.survivalCycle) {
+      // Sinh tồn: tưới liên tục đến mức ẩm mục tiêu, không hoãn vì mưa.
       state.irrigationCycle = true;
       state.pulseIsOn = true;
-      // Start the phase timer only after the relay actually turns on.
-      // Otherwise the 10 s minimum-switch guard can consume part of the pulse.
       state.pulsePhaseStarted = 0;
-    }
-
-    if (state.irrigationCycle && heavyRain && !survival) {
-      state.irrigationCycle = false;
-      state.pulseIsOn = false;
-      state.pulsePhaseStarted = 0;
-    }
-
-    if (state.irrigationCycle) {
-      const unsigned long phaseDuration = state.pulseIsOn
-          ? (survival ? SURVIVAL_PULSE_MS : NORMAL_PULSE_MS)
-          : (survival ? SURVIVAL_REST_MS : PULSE_REST_MS);
-      // Count ON time only while the pump is physically commanded ON, and
-      // count rest time only after it has actually switched OFF.
-      if (state.pumpActive == state.pulseIsOn) {
-        if (state.pulsePhaseStarted == 0) {
-          state.pulsePhaseStarted = now;
-        } else if (now - state.pulsePhaseStarted >= phaseDuration) {
-          state.pulseIsOn = !state.pulseIsOn;
-          state.pulsePhaseStarted = 0;
-        }
+      wantsPumpOn = true;
+      reason = "SINH TON";
+    } else {
+      if (!state.irrigationCycle && soilIsDry && !heavyRain) {
+        state.irrigationCycle = true;
+        state.pulseIsOn = true;
+        // Start the phase timer only after the relay actually turns on.
+        // Otherwise the 10 s minimum-switch guard can consume part of the pulse.
+        state.pulsePhaseStarted = 0;
       }
-      wantsPumpOn = state.pulseIsOn;
-      reason = survival
-          ? (state.pulseIsOn ? "SINH TON" : "NGHI SINH TON")
-          : (state.pulseIsOn ? "TUOI THEO XUNG" : "NGHI THAM");
-    } else if (heavyRain) {
-      reason = state.rainingNow ? "TROI MUA" : "CHO MUA";
+
+      if (state.irrigationCycle && heavyRain) {
+        state.irrigationCycle = false;
+        state.pulseIsOn = false;
+        state.pulsePhaseStarted = 0;
+      }
+
+      if (state.irrigationCycle) {
+        // Count ON time only while the pump is physically commanded ON, and
+        // count rest time only after it has actually switched OFF.
+        if (state.pumpActive == state.pulseIsOn) {
+          if (state.pulsePhaseStarted == 0) {
+            state.pulsePhaseStarted = now;
+          } else if (now - state.pulsePhaseStarted >=
+                     (state.pulseIsOn ? NORMAL_PULSE_MS : PULSE_REST_MS)) {
+            state.pulseIsOn = !state.pulseIsOn;
+            state.pulsePhaseStarted = 0;
+          }
+        }
+        wantsPumpOn = state.pulseIsOn;
+        reason = state.pulseIsOn ? "TUOI THEO XUNG" : "NGHI THAM";
+      } else if (heavyRain) {
+        reason = state.rainingNow ? "TROI MUA" : "CHO MUA";
+      }
     }
   }
 

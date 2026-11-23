@@ -51,6 +51,7 @@ struct AppState {
   unsigned long mqttRetryDelay = 5000UL;
 
   bool irrigationCycle = false;
+  bool survivalCycle = false;
   bool pulseIsOn = false;
   unsigned long pulsePhaseStarted = 0;
 };
