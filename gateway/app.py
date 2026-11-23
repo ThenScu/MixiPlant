@@ -53,6 +53,7 @@ WEATHER_URL = (
     "&forecast_days=3&timezone=Asia%2FHo_Chi_Minh"
 )
 WEATHER_CACHE_SECONDS = 600
+DEVICE_ONLINE_TIMEOUT_SECONDS = 8
 
 db_lock = threading.Lock()
 mqtt_client: mqtt.Client | None = None
@@ -234,7 +235,7 @@ async def lifespan(_app: FastAPI):
         mqtt_client.loop_stop()
 
 
-app = FastAPI(title="MixiPlan Edge Gateway", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="MixiPlant Edge Gateway", version="0.1.0", lifespan=lifespan)
 
 
 class LoginRequest(BaseModel):
@@ -243,7 +244,7 @@ class LoginRequest(BaseModel):
 
 
 class CommandRequest(BaseModel):
-    state: str = Field(pattern=r"^(ON|OFF|AUTO|(SOIL|RAIN):-?\d{1,3}|WIFI:0)$")
+    state: str = Field(pattern=r"^(ON|OFF|AUTO|(SOIL|RAIN):-?\d{1,3}|WIFI:0|SLEEP)$")
 
 
 def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> dict[str, str]:
@@ -282,7 +283,7 @@ def weather_forecast(_user: dict[str, str] = Depends(current_user)) -> dict[str,
         if weather_cache is not None and now - weather_cache_time < WEATHER_CACHE_SECONDS:
             return weather_cache
 
-        request = Request(WEATHER_URL, headers={"User-Agent": "MixiPlan/1.0"})
+        request = Request(WEATHER_URL, headers={"User-Agent": "MixiPlant/1.0"})
         try:
             with urlopen(request, timeout=8) as response:
                 raw = json.loads(response.read().decode("utf-8"))
@@ -399,6 +400,34 @@ def send_command(request: CommandRequest, _user: dict[str, str] = Depends(requir
             raise HTTPException(status_code=422, detail="Gia tri override phai trong -1..100")
     if not broker_connected.is_set() or mqtt_client is None:
         raise HTTPException(status_code=503, detail="MQTT broker is offline")
+    with db_connect() as conn:
+        row = conn.execute(
+            "SELECT received_at FROM telemetry ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=409, detail="Chưa nhận dữ liệu từ ESP32. Hãy chạy Wokwi và chờ thiết bị kết nối rồi thử lại.")
+    try:
+        last_seen = datetime.fromisoformat(row["received_at"])
+        age_seconds = (datetime.now(last_seen.tzinfo) - last_seen).total_seconds()
+    except (TypeError, ValueError):
+        age_seconds = DEVICE_ONLINE_TIMEOUT_SECONDS + 1
+    if age_seconds > DEVICE_ONLINE_TIMEOUT_SECONDS:
+        raise HTTPException(status_code=409, detail="ESP32 đang mất kết nối. Lệnh chưa được gửi; chờ thiết bị online rồi bấm lại.")
+    if request.state == "SLEEP":
+        with db_connect() as conn:
+            previous_sleep = conn.execute(
+                "SELECT created_at, status FROM commands WHERE state = 'SLEEP' ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+        if previous_sleep and previous_sleep["status"] in ("queued", "acknowledged"):
+            try:
+                previous_time = datetime.fromisoformat(previous_sleep["created_at"])
+                seconds_since_request = (datetime.now(previous_time.tzinfo) - previous_time).total_seconds()
+                awake_after_sleep = last_seen > previous_time + timedelta(seconds=10)
+            except (TypeError, ValueError):
+                seconds_since_request = 0
+                awake_after_sleep = False
+            if seconds_since_request < 30 and not awake_after_sleep:
+                raise HTTPException(status_code=409, detail="Lệnh ngủ đã được gửi. Chờ ESP32 thức dậy và hiện Online rồi hãy bấm lại.")
     command_id = uuid.uuid4().hex
     payload = json.dumps({"id": command_id, "device": "pump", "state": request.state})
     info = mqtt_client.publish(COMMAND_TOPIC, payload, qos=1, retain=False)

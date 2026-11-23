@@ -73,11 +73,12 @@ void applyActuators() {
 
 void setup() {
   Serial.begin(115200);
-  const esp_sleep_wakeup_cause_t wakeCause = esp_sleep_get_wakeup_cause();
-  if (wakeCause == ESP_SLEEP_WAKEUP_TIMER) {
-    Serial.println("[Power] Thuc day tu Deep Sleep bang timer.");
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
+    restorePumpModeAfterDeepSleep(app);
+    Serial.printf("[Power] Het gio Deep Sleep. Khoi dong lai, che do duoc khoi phuc: %s.\n",
+                  app.pumpMode.c_str());
   } else {
-    Serial.println("[Power] Khoi dong nguon binh thuong.");
+    Serial.println("[MixiPlant] Khoi dong ESP32.");
   }
 
   pinMode(RELAY_PIN, OUTPUT);
@@ -122,6 +123,5 @@ void loop() {
     app.lastMqttPub = now;
     publishTelemetry(app, now);
   }
-
-  enterLowPowerSleepIfSafe(app);
+  enterDeepSleepDemoIfRequested(app, now);
 }

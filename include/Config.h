@@ -56,11 +56,6 @@ constexpr bool IS_WOKWI_SIMULATION = true;
 // Wokwi: mo hinh do am tang khi bom bat de dashboard co phan hoi de thay.
 // Khi dung dau do that, tat co che nay de doc truc tiep cam bien.
 constexpr bool SIMULATE_SOIL_RESPONSE = true;
-// Tat Deep Sleep trong Wokwi de LCD va dashboard cap nhat lien tuc.
-// Chi bat khi thu tiet kiem dien tren phan cung that.
-constexpr bool ENABLE_LOW_POWER_DEEP_SLEEP = false;
-constexpr unsigned long LOW_POWER_WAKE_INTERVAL_MS = 300000UL;
-
 // Nguong dieu khien demo. 40% la nguong kho bat dau chu ky, 65% la nguong dung.
 constexpr int CRITICAL_LOW = 15;
 constexpr int DRY_THRESHOLD = 40;
@@ -72,7 +67,7 @@ constexpr unsigned long PUMP_MIN_SWITCH_MS = 10000UL;
 constexpr unsigned long RAIN_TEST_TIMEOUT_MS = 120000UL;
 constexpr unsigned long SOIL_TEST_TIMEOUT_MS = 120000UL;
 // Cua so offline chu dong theo lenh WIFI:0 (demo mat mang co kiem soat).
-constexpr unsigned long WIFI_OFF_DEMO_MS = 30000UL;
+constexpr unsigned long WIFI_OFF_DEMO_MS = 15000UL;
 // Vuot num tren mach lech qua muc nay thi huy override tu dashboard.
 constexpr int POT_OVERRIDE_CANCEL_DELTA = 5;
 constexpr unsigned long WEATHER_RETRY_INVALID_MS = 30000UL;
@@ -88,6 +83,10 @@ constexpr unsigned long MQTT_RETRY_MAX_MS = 60000UL;
 constexpr unsigned long TELEMETRY_PUBLISH_INTERVAL_MS = 2500UL;
 constexpr uint16_t MQTT_PACKET_BUFFER_SIZE = 512;  // Du cho JSON telemetry day du + topic MQTT.
 constexpr unsigned long WEATHER_MAX_AGE_MS = 900000UL;
+
+// Lenh SLEEP cho demo: gui them telemetry roi ngu; thoi gian timer dat trong firmware.
+constexpr unsigned long DEEP_SLEEP_DEMO_SECONDS = 10UL;
+constexpr unsigned long DEEP_SLEEP_DEMO_PUBLISH_WAIT_MS = 3000UL;
 
 static const char* const WIFI_SSID = MIXIPLAN_WIFI_SSID;
 static const char* const WIFI_PASSWORD = MIXIPLAN_WIFI_PASSWORD;

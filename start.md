@@ -1,4 +1,4 @@
-# Cách chạy MixiPlan
+# Cách chạy MixiPlant
 
 Tài liệu này hướng dẫn chạy mô hình ESP32 trên VS Code/Wokwi, sau đó nối MQTT và dashboard local trên Windows. Làm từng lệnh một, nhấn Enter sau mỗi dòng. Không dán nhiều lệnh liền nhau vào một dòng.
 
@@ -17,10 +17,16 @@ Trong VS Code chọn **File → Open Folder...** và mở thư mục gốc của
 ## 3. Build và chạy ESP32 mô phỏng
 
 1. Mở `platformio.ini` hoặc một file `.cpp` trong VS Code để PlatformIO nhận project.
-2. Chọn biểu tượng PlatformIO hoặc nhấn `Ctrl+Shift+P`, chạy **PlatformIO: Build**.
-3. Chờ Terminal hiện `[SUCCESS]`. Cần build lại sau mỗi lần sửa firmware; dashboard/Python không được build bằng PlatformIO.
-4. Mở `diagram.json`, bấm nút xanh **Start Simulation** của Wokwi.
-5. Mở Serial Monitor ở tốc độ `115200` để xem log.
+2. Mở **Terminal → New Terminal** và chọn **Command Prompt (CMD)**. Đảm bảo đang ở thư mục gốc project.
+3. Build bằng lệnh CMD này (dùng đường dẫn PlatformIO đã cài trong VS Code, không cần `pio` nằm trong PATH):
+
+   ```cmd
+   "%USERPROFILE%\.platformio\penv\Scripts\platformio.exe" run
+   ```
+
+4. Chờ Terminal hiện `[SUCCESS]`. Cần build lại sau mỗi lần sửa firmware; dashboard/Python không được build bằng PlatformIO.
+5. Mở `diagram.json`, bấm nút xanh **Start Simulation** của Wokwi.
+6. Mở Serial Monitor ở tốc độ `115200` để xem log và gửi lệnh demo.
 
 Nếu chỉ cần chạy mạch mà chưa dùng dashboard thì dừng ở đây. Build chỉ biên dịch firmware; muốn nhìn mạch hoạt động phải khởi chạy mô phỏng.
 
@@ -37,7 +43,7 @@ Khi Wokwi đang chạy, ESP32 tự thử kết nối. Serial Monitor báo kết 
 | Topic | Dùng để làm gì |
 |---|---|
 | `mixiplan/tuoicay_mx7k2/trangthai` | ESP32 gửi độ ẩm, mưa, trạng thái bơm |
-| `mixiplan/tuoicay_mx7k2/bom/set` | Nhận lệnh `ON`, `OFF`, `AUTO` hoặc lệnh JSON từ dashboard |
+| `mixiplan/tuoicay_mx7k2/bom/set` | Nhận lệnh `ON`, `OFF`, `AUTO`, `WIFI:0`, `SLEEP` hoặc lệnh JSON từ dashboard |
 | `mixiplan/tuoicay_mx7k2/bom/ack` | ESP32 xác nhận đã nhận/từ chối lệnh |
 
 Broker này là broker công cộng để minh họa; topic có thêm mã riêng `tuoicay_mx7k2` để tránh đụng thiết bị khác. Broker vẫn không ổn định và không bảo mật. Chỉ dùng với Wokwi, không nối bơm thật.
@@ -69,6 +75,15 @@ http://127.0.0.1:8000
 ```
 
 Đăng nhập bằng `admin` hoặc `viewer`; mở `gateway/.env` để xem mật khẩu đã tạo. Admin được gửi lệnh, viewer chỉ xem. Khi Wokwi và gateway cùng kết nối được broker, dashboard sẽ nhận telemetry.
+
+### Demo Deep Sleep từ Dashboard
+
+1. Đăng nhập bằng tài khoản `admin` và vào **Demo đầu vào**.
+2. Chỉ nhận lệnh khi bơm đang tắt. Bấm **Deep Sleep** để ESP32 gửi dữ liệu cuối, tắt Wi‑Fi/MQTT và tạm dừng đo/tưới.
+3. Bộ hẹn giờ được cấu hình trong firmware sẽ đánh thức ESP32. Chip khởi động lại từ đầu nên Wokwi/Serial trông như reset; trình duyệt và dashboard không bị tải lại. Wokwi có thể hiển thị thời gian khác thực tế.
+4. Firmware khôi phục chế độ trước khi ngủ. Nếu trước đó là **AUTO**, thiết bị tự tiếp tục AUTO sau khi kết nối; nếu trước đó tắt thủ công thì vẫn tắt. Dashboard tạm báo thiết bị offline trong lúc ngủ.
+
+Trong lúc ngủ, ESP32 không đo, không tưới và Dashboard không nhận dữ liệu mới. Đây là nút demo thủ công cho cơ chế Deep Sleep đã cấu hình trong firmware, chưa phải lịch ngủ tự động khi cây không cần tưới. Wokwi minh họa luồng ngủ/thức, không đo mức tiêu thụ pin thực tế.
 
 Dashboard cũng tải dự báo Open‑Meteo cho khu vực trung tâm TP.HCM: thời tiết hiện tại, 8 giờ tiếp theo và 3 ngày tới. Gateway cần Internet; dữ liệu dự báo được cache 10 phút. Nếu Open‑Meteo tạm thời không truy cập được, dashboard báo lỗi hoặc dùng bản cache gần nhất.
 

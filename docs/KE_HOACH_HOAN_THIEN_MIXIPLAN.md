@@ -10,7 +10,7 @@ MixiPlan là mô hình tưới thông minh dùng độ ẩm đất và dự báo
 
 | Nhóm yêu cầu | Hiện trạng trong project | Việc còn lại |
 |---|---|---|
-| **2A – Hardware & Embedded**: ESP32, cảm biến, relay/van, lọc và hiệu chuẩn, quyết định tưới | Firmware lọc 2 lớp: trimmed mean 10 mẫu ADC + EMA α=0.3; mốc hiệu chuẩn; ngưỡng bật 40%, dừng 65%, sinh tồn 15%; tưới xung 2 phút/nghỉ 3 phút; relay bơm/van; Deep Sleep có điều kiện (mặc định tắt). Có sơ đồ mạch đề xuất với lọc RC + diode flyback (`docs/so_do_mach_loc_va_bao_ve.svg`) và bảng tính pin mục 8. | Chưa đo/hiệu chuẩn cảm biến thật, chưa xác nhận ngưỡng theo cây/đất, dòng relay, thử lỗi cảm biến hay kiểm chứng tiêu thụ điện. Số liệu pin là ước lượng có giả định, chưa đo. NPK/EC không nằm trong demo vì chưa có đầu dò thật. |
+| **2A – Hardware & Embedded**: ESP32, cảm biến, relay/van, lọc và hiệu chuẩn, quyết định tưới | Firmware lọc 2 lớp: trimmed mean 10 mẫu ADC + EMA α=0.3; mốc hiệu chuẩn; ngưỡng bật 40%, dừng 65%, sinh tồn 15%; tưới xung 2 phút/nghỉ 3 phút; relay bơm/van. Demo Deep Sleep được gọi bằng lệnh `SLEEP`, chỉ nhận khi bơm đang tắt; ESP32 gửi thêm telemetry, ngủ theo thời gian timer cấu hình trong firmware rồi tự khởi động và kết nối lại. Có sơ đồ mạch đề xuất với lọc RC + diode flyback (`docs/so_do_mach_loc_va_bao_ve.svg`) và bảng tính pin mục 8. | Chưa đo/hiệu chuẩn cảm biến thật, chưa xác nhận ngưỡng theo cây/đất, dòng relay, thử lỗi cảm biến hay kiểm chứng tiêu thụ điện. Số liệu pin là ước lượng có giả định, chưa đo. NPK/EC không nằm trong demo vì chưa có đầu dò thật. |
 | **2B – Networking & Edge**: LoRa/LoRaWAN, gateway, đệm offline và đồng bộ | ESP32 có Wi‑Fi reconnect, Open‑Meteo, MQTT publish/subscribe; **ring buffer 120 gói compact trên ESP32 + tự flush khi MQTT nối lại (xấp xỉ 5 phút)**; gateway FastAPI nhận MQTT, bung gói backfill, lưu SQLite, webhook có token, ACK lệnh. Đặc tả gói tin gọn ~103 byte (mục 9) vừa 1 frame LoRaWAN SF7. | Chưa có radio LoRa/LoRaWAN thật hay gateway LoRa; buffer nằm trên RAM (mất khi deep sleep/mất điện); webhook chưa nối dịch vụ bên ngoài. |
 | **2C – Cloud & Security**: AWS IoT Core/OpenWeatherMap, lưu lịch sử, API an toàn, TLS/JWT/RBAC, dashboard | Dashboard web local đầy đủ: thẻ số liệu, biểu đồ lịch sử, dự báo thời tiết, điều khiển admin, **khối demo đầu vào (ép độ ẩm/mưa)**, nhãn nguồn mô phỏng, giữ số đo cuối và đánh dấu rõ khi dữ liệu cũ. SQLite có index thời gian + prune 7 ngày; JWT 8 giờ, RBAC admin/viewer, webhook token, ACK lệnh, cấu hình MQTT TLS tùy chọn. | Chưa deploy AWS IoT Core, chưa chứng chỉ/broker riêng, chưa OpenWeatherMap (đang Open‑Meteo), chưa HTTPS/reverse proxy. Public HiveMQ không an toàn cho thiết bị thật. |
 
@@ -70,7 +70,7 @@ Webhook phù hợp để nhận telemetry từ nền tảng ngoài; firmware hi�
 | `src/WeatherService.cpp` | Open‑Meteo, xác suất mưa giờ hiện tại, retry 30 giây khi chưa hợp lệ, hết hạn forecast. |
 | `src/NetworkService.cpp` | Wi‑Fi/MQTT reconnect, nhận lệnh + ACK, telemetry JSON, gói compact, ring buffer, flush đồng bộ, demo mất Wi‑Fi (lệnh `WIFI:0`, nút GPIO33, Serial OFFLINE/ONLINE). |
 | `src/Display.cpp` | Khởi tạo và cập nhật 2 LCD/Serial Monitor. |
-| `src/PowerManager.cpp` | Deep sleep có điều kiện; mặc định tắt, chỉ cho phần cứng thật và AUTO khi đất đủ ẩm. |
+| `src/PowerManager.cpp` | Nhận yêu cầu demo Deep Sleep; chỉ ngủ khi bơm tắt, gửi thêm telemetry rồi dùng timer đã cấu hình trong firmware để thức dậy. |
 | `gateway/app.py`, `gateway/static/index.html` | API, SQLite, JWT/RBAC, MQTT, backfill, webhook, dashboard + khối demo. |
 
 ## 7. Câu 1 — Kiến trúc 4 tầng
@@ -118,7 +118,7 @@ Hình: `docs/so_do_mach_loc_va_bao_ve.svg`. Relay opto cách ly GPIO với tải
 
 ### 8.4. Deep Sleep
 
-`PowerManager.cpp` chỉ ngủ khi đủ điều kiện: `ENABLE_LOW_POWER_DEEP_SLEEP = true`, `SIMULATE_SOIL_RESPONSE = false` (cảm biến thật), chế độ AUTO, bơm đang tắt, không mưa và đất ≥ 65%. Ngủ `LOW_POWER_WAKE_INTERVAL_MS = 300 s` rồi thức bằng timer. **Lưu ý**: ESP32 khởi động lại sau deep sleep (setup chạy lại, relay về tắt, ring buffer RAM mất). Mặc định tắt để Wokwi/MQTT cập nhật liên tục.
+Lệnh `SLEEP` từ Dashboard hoặc Serial gọi demo. Firmware từ chối nếu bơm đang chạy; nếu an toàn, ESP32 gửi thêm telemetry, đưa relay bơm/van về tắt, tắt Wi‑Fi rồi vào Deep Sleep theo thời gian timer cấu hình trong firmware. Trong lúc ngủ, chip không đo và không tưới. Timer đánh thức chip; sau đó ESP32 khởi động lại từ `setup()` nên Wokwi/Serial trông như reset. Chế độ trước đó được lưu trong RTC memory: nếu đang AUTO thì tự tiếp tục AUTO sau khi kết nối lại; nếu đang tắt thủ công thì vẫn tắt. Dashboard không tải lại, chỉ tạm ngừng nhận telemetry. Wokwi có thể hiển thị thời gian khác thực tế và không đo được mức tiêu thụ pin. Đây là nút demo Deep Sleep do người dùng bấm, chưa tự đưa thiết bị vào lịch ngủ khi cây chưa cần tưới.
 
 ### 8.5. Tính toán pin (ước lượng có giả định — chưa đo thực tế)
 

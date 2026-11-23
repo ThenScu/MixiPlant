@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "Config.h"
+#include "PowerManager.h"
 
 namespace {
 #if MIXIPLAN_MQTT_TLS
@@ -63,8 +64,18 @@ void handleSerialNetworkCommand(AppState& state) {
     if (serialCommand == "OFFLINE" || serialCommand == "ONLINE") {
       state.wifiOffActive = false;
       setDemoWifiOffline(serialCommand == "OFFLINE", state);
+    } else if (serialCommand == "SLEEP") {
+      if (state.pumpActive) {
+        Serial.println("[Demo] Khong ngu khi bom dang chay. Tat bom roi thu lai.");
+      } else {
+        rememberPumpModeBeforeDeepSleep(state);
+        state.pumpMode = "MANUAL_OFF";
+        state.deepSleepDemoRequested = true;
+        state.deepSleepDemoRequestedAt = millis();
+        Serial.println("[Demo] Nhan SLEEP. ESP32 gui them du lieu roi moi ngu.");
+      }
     } else if (!serialCommand.isEmpty()) {
-      Serial.println("[Demo] Go OFFLINE hoac ONLINE.");
+      Serial.println("[Demo] Lenh: OFFLINE, ONLINE hoac SLEEP.");
     }
     serialCommand = "";
   }
@@ -160,6 +171,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 
   bool accepted = true;
+  const char* rejectionReason = "UNKNOWN_STATE";
   if (requestedState == "ON") {
     appState->pumpMode = "MANUAL_ON";
   } else if (requestedState == "OFF") {
@@ -190,7 +202,24 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   } else if (requestedState == "WIFI:0") {
     appState->wifiOffActive = true;
     appState->wifiOffUntil = millis() + WIFI_OFF_DEMO_MS;
-    Serial.println("[Demo] WIFI:0 - se ngat WiFi 30s, van chay cuc bo + dem ring");
+    Serial.println("[Demo] WIFI:0 - se ngat WiFi 15s, van chay cuc bo + dem ring");
+  } else if (requestedState == "SLEEP") {
+    if (appState->pumpActive) {
+      accepted = false;
+      rejectionReason = "PUMP_ACTIVE";
+      Serial.println("[Demo] Tu choi Deep Sleep vi bom dang chay.");
+    } else if (appState->deepSleepDemoRequested) {
+      accepted = false;
+      rejectionReason = "SLEEP_ALREADY_PENDING";
+      Serial.println("[Demo] Lenh ngu da duoc nhan, bo qua lenh trung.");
+    } else {
+      // Giữ bơm tắt trong khoảng chờ gửi ACK/telemetry trước khi ngủ.
+      rememberPumpModeBeforeDeepSleep(*appState);
+      appState->pumpMode = "MANUAL_OFF";
+      appState->deepSleepDemoRequested = true;
+      appState->deepSleepDemoRequestedAt = millis();
+      Serial.println("[Demo] Nhan lenh SLEEP tu dashboard.");
+    }
   } else {
     accepted = false;
   }
@@ -200,7 +229,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.printf("[MQTT] Lenh %s: %s\n", accepted ? "chap nhan" : "tu choi",
                 requestedState.c_str());
   publishCommandAck(commandId, requestedState, accepted,
-                    accepted ? "QUEUED" : "UNKNOWN_STATE");
+                    accepted ? "QUEUED" : rejectionReason);
   // Lenh sai khong thay doi che do dang chay.
 }
 }  // namespace
@@ -246,7 +275,7 @@ void updateNetworkService(AppState& state, unsigned long now) {
     if (now >= state.wifiOffUntil) {
       state.wifiOffActive = false;
       setDemoWifiOffline(false, state);
-      Serial.println("[Demo] Het 30s offline, dang noi lai WiFi");
+      Serial.println("[Demo] Het 15s offline, dang noi lai WiFi");
     } else if (!demoWifiForcedOffline) {
       setDemoWifiOffline(true, state);
     }
@@ -260,7 +289,7 @@ void updateNetworkService(AppState& state, unsigned long now) {
   if (!demoWifiForcedOffline && !mqtt.connected() && WiFi.status() == WL_CONNECTED &&
       now - state.lastMqttAttempt >= state.mqttRetryDelay) {
     state.lastMqttAttempt = now;
-    const String clientId = "ESP32-MixiPlan-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+    const String clientId = "ESP32-MixiPlant-" + String((uint32_t)ESP.getEfuseMac(), HEX);
     const bool connected = strlen(MQTT_USERNAME) > 0
         ? mqtt.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)
         : mqtt.connect(clientId.c_str());

@@ -2,4 +2,6 @@
 
 #include "AppState.h"
 
-void enterLowPowerSleepIfSafe(const AppState& state);
+void rememberPumpModeBeforeDeepSleep(const AppState& state);
+void restorePumpModeAfterDeepSleep(AppState& state);
+void enterDeepSleepDemoIfRequested(AppState& state, unsigned long now);

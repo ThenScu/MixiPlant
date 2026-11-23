@@ -33,7 +33,7 @@ echo Checking/installing gateway packages. This happens on first run or with --i
 if errorlevel 1 goto setup_failed
 
 :start_server
-echo MixiPlan dashboard: http://127.0.0.1:8000
+echo MixiPlant dashboard: http://127.0.0.1:8000
 echo Press Ctrl+C to stop the gateway.
 ".venv\Scripts\python.exe" -m uvicorn app:app --host 127.0.0.1 --port 8000
 exit /b %errorlevel%

@@ -28,7 +28,7 @@ void beginDisplay() {
   lcdSensors.init();
   lcdMain.backlight();
   lcdSensors.backlight();
-  writeLine(lcdMain, 0, "MIXIPLAN CHINH");
+  writeLine(lcdMain, 0, "MIXIPLANT CHINH");
   writeLine(lcdMain, 1, "Khoi dong...");
   writeLine(lcdSensors, 0, "CAM BIEN DEMO");
   writeLine(lcdSensors, 1, "Khoi dong...");

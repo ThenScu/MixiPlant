@@ -1,4 +1,4 @@
-# MixiPlan local gateway
+# MixiPlant local gateway
 
 Gateway local nhận telemetry và ACK qua MQTT, lưu lịch sử vào SQLite, nhận dữ liệu webhook có token và phục vụ dashboard có tài khoản `admin`/`viewer`.
 
