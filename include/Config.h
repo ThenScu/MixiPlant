@@ -53,11 +53,13 @@ constexpr int SOIL_RAW_WET = 4095;
 
 // Ghi nhãn dữ liệu để dashboard không nhầm tín hiệu Wokwi với cảm biến thật.
 constexpr bool IS_WOKWI_SIMULATION = true;
-// Bat ON cho Wokwi; tat khi dung cam bien dat that de lay so do truc tiep.
-constexpr bool SIMULATE_SOIL_RESPONSE = false;
-// Deep Sleep danh cho ban phan cung: mac dinh tat de simulator/MQTT van cap nhat lien tuc.
-constexpr bool ENABLE_LOW_POWER_DEEP_SLEEP = true;
-constexpr unsigned long LOW_POWER_WAKE_INTERVAL_MS = 30000UL;
+// Wokwi: mo hinh do am tang khi bom bat de dashboard co phan hoi de thay.
+// Khi dung dau do that, tat co che nay de doc truc tiep cam bien.
+constexpr bool SIMULATE_SOIL_RESPONSE = true;
+// Tat Deep Sleep trong Wokwi de LCD va dashboard cap nhat lien tuc.
+// Chi bat khi thu tiet kiem dien tren phan cung that.
+constexpr bool ENABLE_LOW_POWER_DEEP_SLEEP = false;
+constexpr unsigned long LOW_POWER_WAKE_INTERVAL_MS = 300000UL;
 
 // Nguong dieu khien demo. 40% la nguong kho bat dau chu ky, 65% la nguong dung.
 constexpr int CRITICAL_LOW = 15;
@@ -69,6 +71,8 @@ constexpr int RAIN_THRESHOLD = 70;
 constexpr unsigned long PUMP_MIN_SWITCH_MS = 10000UL;
 constexpr unsigned long RAIN_TEST_TIMEOUT_MS = 120000UL;
 constexpr unsigned long SOIL_TEST_TIMEOUT_MS = 120000UL;
+// Cua so offline chu dong theo lenh WIFI:0 (demo mat mang co kiem soat).
+constexpr unsigned long WIFI_OFF_DEMO_MS = 30000UL;
 // Vuot num tren mach lech qua muc nay thi huy override tu dashboard.
 constexpr int POT_OVERRIDE_CANCEL_DELTA = 5;
 constexpr unsigned long WEATHER_RETRY_INVALID_MS = 30000UL;
@@ -76,6 +80,7 @@ constexpr size_t TELEMETRY_RING_CAPACITY = 120;
 constexpr unsigned long NORMAL_PULSE_MS = 120000UL;
 constexpr unsigned long SURVIVAL_PULSE_MS = 30000UL;
 constexpr unsigned long PULSE_REST_MS = 180000UL;
+constexpr unsigned long SURVIVAL_REST_MS = 10000UL;
 
 constexpr unsigned long WIFI_RETRY_MS = 10000UL;
 constexpr unsigned long MQTT_RETRY_MIN_MS = 5000UL;
